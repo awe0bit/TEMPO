@@ -164,10 +164,10 @@ jobs:
           context: services/sync
           push: true
           tags: |
-            ghcr.io/felixzoe/tempo-sync:${{ needs.version.outputs.version }}
-            ghcr.io/felixzoe/tempo-sync:latest
-            ghcr.io/felixzoe/qingxu-sync:${{ needs.version.outputs.version }}
-            ghcr.io/felixzoe/qingxu-sync:latest
+            ghcr.io/${{ github.repository_owner }}/tempo-sync:${{ needs.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/tempo-sync:latest
+            ghcr.io/${{ github.repository_owner }}/qingxu-sync:${{ needs.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/qingxu-sync:latest
           labels: |
             org.opencontainers.image.title=tempo-sync
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
