@@ -308,7 +308,7 @@ jobs:
 
   apple-runtime:
     needs: version
-    runs-on: macos-15
+    runs-on: macos-26
     defaults:
       run:
         working-directory: apps/ios-runtime
@@ -342,7 +342,7 @@ jobs:
 
   apple-ios:
     needs: [version, apple-runtime]
-    runs-on: macos-15
+    runs-on: macos-26
     defaults:
       run:
         working-directory: apps/apple
@@ -531,7 +531,7 @@ jobs:
 
   apple-macos:
     needs: [version, apple-runtime]
-    runs-on: macos-15
+    runs-on: macos-26
     defaults:
       run:
         working-directory: apps/apple
