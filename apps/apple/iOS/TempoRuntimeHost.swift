@@ -135,7 +135,8 @@ private struct TempoRuntimeChrome: View {
       searchExpanded = true
     }
     TempoNativeRegistry.shared.sendCommand("search", payload: ["query": searchText])
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
+      guard searchExpanded else { return }
       searchFocused = true
     }
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()

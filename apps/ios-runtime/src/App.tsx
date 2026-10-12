@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, AppState, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 
@@ -18,13 +18,13 @@ type RuntimeProps = {
 export default function App(props: RuntimeProps) {
   useAutomaticRuntimeUpdates();
   const tempo = useTempo(props.route);
-  const { snapshot, route, theme } = tempo;
+  const { snapshot, route, theme, error, clearError } = tempo;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       {snapshot ? <RouteView tempo={tempo} /> : <View style={styles.loading}><ActivityIndicator color={theme.accent} /></View>}
-      {tempo.error ? <View style={[styles.toast, { backgroundColor: theme.text }]}><Text style={{ color: theme.background, fontWeight: '600' }}>{tempo.error}</Text></View> : null}
+      {error ? <Pressable accessibilityRole="button" accessibilityLabel="关闭错误提示" onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
     </SafeAreaView>
   );
 }
@@ -78,5 +78,7 @@ function RouteView({ tempo }: { tempo: ReturnType<typeof useTempo> }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  toast: { position: 'absolute', left: 22, right: 22, bottom: 20, minHeight: 48, borderRadius: 24, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+  toast: { position: 'absolute', left: 18, right: 18, bottom: 84, zIndex: 100, minHeight: 50, borderRadius: 25, paddingLeft: 18, paddingRight: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: .2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  toastText: { flex: 1, fontSize: 14, lineHeight: 19, fontWeight: '600' },
+  toastClose: { width: 30, textAlign: 'center', fontSize: 22, fontWeight: '500', opacity: .72 },
 });

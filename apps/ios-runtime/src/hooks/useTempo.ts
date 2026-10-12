@@ -25,6 +25,12 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!error) return undefined;
+    const timer = setTimeout(() => setError(undefined), 4800);
+    return () => clearTimeout(timer);
+  }, [error]);
+
   const perform = useCallback(async <T,>(action: string, payload: Record<string, unknown> = {}) => {
     try {
       setError(undefined);

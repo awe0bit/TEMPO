@@ -22,9 +22,8 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
   const [showCompleted, setShowCompleted] = useState(true);
   const [undo, setUndo] = useState<TempoTask>();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
-  const expanded = useRef(false);
-  const listAtTop = useRef(true);
 
   useEffect(() => {
     if (command?.type === 'search') setQuery(command.query ?? '');
@@ -41,18 +40,8 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
     return () => clearTimeout(timer);
   }, [undo]);
 
-  const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => route === 'today' && listAtTop.current && Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-    onPanResponderMove: (_, gesture) => calendar.setValue(Math.max(0, Math.min(1, (expanded.current ? 1 : 0) + gesture.dy / 220))),
-    onPanResponderRelease: (_, gesture) => {
-      const target = gesture.vy > .25 || gesture.dy > 70 ? 1 : gesture.vy < -.25 || gesture.dy < -70 ? 0 : expanded.current ? 1 : 0;
-      expanded.current = target === 1;
-      Animated.spring(calendar, { toValue: target, useNativeDriver: false, stiffness: 190, damping: 25, mass: .8 }).start();
-    },
-  }), [calendar, route]);
-
   function setCalendarExpanded(next: boolean) {
-    expanded.current = next;
+    setCalendarExpandedState(next);
     Animated.spring(calendar, { toValue: next ? 1 : 0, useNativeDriver: false, stiffness: 210, damping: 28, mass: .78 }).start();
   }
 
@@ -108,7 +97,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
 
   return (
     <Screen theme={theme}>
-      <View style={styles.flex} {...pan.panHandlers}>
+      <View style={styles.flex}>
         <NativeChromeGap />
         <View style={styles.heading}>
           <Text style={[styles.title, { color: theme.text }]}>{route === 'today' ? greeting() : '收集箱'}</Text>
@@ -119,7 +108,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
           {route === 'inbox' && quote ? <Text numberOfLines={2} style={[styles.ambientQuote, { color: theme.secondary }]}>“{quote}”</Text> : null}
         </View>
 
-        {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} onToggle={() => setCalendarExpanded(!expanded.current)} /> : null}
+        {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
         <View style={styles.listPanel}>
           <FlatList
@@ -127,8 +116,6 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
             keyExtractor={(item) => item.id}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
-            onScroll={(event) => { listAtTop.current = event.nativeEvent.contentOffset.y <= 1; }}
-            scrollEventThrottle={16}
             ListHeaderComponent={shown.length ? (
               <View style={styles.groupHeader}>
                 <Text style={[styles.groupTitle, { color: theme.text }]}>{route === 'today' ? dayTitle(selectedDate) : query ? '搜索结果' : '待整理'}</Text>
@@ -192,25 +179,52 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
   );
 }
 
-function CalendarStrip({ theme, selected, onSelect, progress, onToggle }: { theme: TempoTheme; selected: Date; onSelect: (date: Date) => void; progress: Animated.Value; onToggle: () => void }) {
-  const [anchor, setAnchor] = useState(() => startOfWeek(selected));
-  useEffect(() => {
-    if (selected < anchor || selected > addDays(anchor, 41)) setAnchor(startOfWeek(selected));
-  }, [anchor, selected]);
-  const days = useMemo(() => {
-    return Array.from({ length: 42 }, (_, index) => addDays(anchor, index));
-  }, [anchor]);
-  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [78, 354] });
+function CalendarStrip({ theme, selected, onSelect, progress, expanded, onExpandedChange }: {
+  theme: TempoTheme;
+  selected: Date;
+  onSelect: (date: Date) => void;
+  progress: Animated.Value;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+}) {
+  const gridStart = useMemo(() => startOfWeek(new Date(selected.getFullYear(), selected.getMonth(), 1)), [selected.getFullYear(), selected.getMonth()]);
+  const days = useMemo(() => Array.from({ length: 42 }, (_, index) => addDays(gridStart, index)), [gridStart]);
+  const selectedIndex = Math.max(0, days.findIndex((date) => sameDay(date, selected)));
+  const selectedRow = Math.floor(selectedIndex / 7);
+  const dragStart = useRef(expanded ? 1 : 0);
+  const pan = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 3 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onPanResponderGrant: () => { dragStart.current = expanded ? 1 : 0; },
+    onPanResponderMove: (_, gesture) => progress.setValue(Math.max(0, Math.min(1, dragStart.current + gesture.dy / 230))),
+    onPanResponderRelease: (_, gesture) => {
+      const position = Math.max(0, Math.min(1, dragStart.current + gesture.dy / 230));
+      onExpandedChange(gesture.vy > .22 ? true : gesture.vy < -.22 ? false : position >= .5);
+    },
+    onPanResponderTerminate: (_, gesture) => {
+      const position = Math.max(0, Math.min(1, dragStart.current + gesture.dy / 230));
+      onExpandedChange(position >= .5);
+    },
+  }), [expanded, onExpandedChange, progress]);
+  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [102, 342] });
+  const gridHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [48, 288] });
+  const gridOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [-selectedRow * 48, 0] });
   return (
     <Animated.View style={[styles.calendar, { height }]}>
-      {[0, 1, 2, 3, 4, 5].map((row) => <View key={row} style={[styles.weekRow, row > 0 && styles.compactWeekRow]}>{days.slice(row * 7, row * 7 + 7).map((date) => <DateCell key={date.toISOString()} date={date} selected={sameDay(date, selected)} theme={theme} showWeekday={row === 0} onPress={() => onSelect(date)} />)}</View>)}
-      <Pressable onPress={onToggle} hitSlop={10} style={styles.calendarHandleButton}><View style={[styles.calendarHandle, { backgroundColor: theme.tertiary }]} /></Pressable>
+      <View style={styles.weekdayRow}>{['一', '二', '三', '四', '五', '六', '日'].map((day) => <Text key={day} style={[styles.weekday, { color: theme.secondary }]}>{day}</Text>)}</View>
+      <Animated.View style={[styles.calendarGridViewport, { height: gridHeight }]}>
+        <Animated.View style={{ transform: [{ translateY: gridOffset }] }}>
+          {[0, 1, 2, 3, 4, 5].map((row) => <View key={row} style={styles.weekRow}>{days.slice(row * 7, row * 7 + 7).map((date) => <DateCell key={date.toISOString()} date={date} selected={sameDay(date, selected)} inCurrentMonth={date.getMonth() === selected.getMonth() && date.getFullYear() === selected.getFullYear()} theme={theme} onPress={() => onSelect(date)} />)}</View>)}
+        </Animated.View>
+      </Animated.View>
+      <View {...pan.panHandlers} style={styles.calendarHandleTouch}>
+        <Pressable onPress={() => onExpandedChange(!expanded)} hitSlop={8} style={styles.calendarHandleButton}><View style={[styles.calendarHandle, { backgroundColor: theme.tertiary }]} /></Pressable>
+      </View>
     </Animated.View>
   );
 }
 
-function DateCell({ date, selected, theme, onPress, showWeekday }: { date: Date; selected: boolean; theme: TempoTheme; onPress: () => void; showWeekday: boolean }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}>{showWeekday ? <Text style={[styles.weekday, { color: theme.secondary }]}>{'一二三四五六日'[(date.getDay() + 6) % 7]}</Text> : null}<View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : theme.text }]}>{date.getDate()}</Text></View></Pressable>;
+function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Date; selected: boolean; inCurrentMonth: boolean; theme: TempoTheme; onPress: () => void }) {
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : inCurrentMonth ? theme.text : theme.tertiary, opacity: selected || inCurrentMonth ? 1 : .48 }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
 function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onReschedule }: { task: TempoTask; theme: TempoTheme; separated: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onReschedule: (date?: string) => void }) {
@@ -260,15 +274,17 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: '800', letterSpacing: -1.15 },
   subtitle: { fontSize: 14, lineHeight: 20, marginTop: 6 },
   ambientQuote: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingRight: 24 },
-  calendar: { overflow: 'hidden', paddingHorizontal: 16, paddingBottom: 12 },
-  weekRow: { height: 66, flexDirection: 'row' },
-  compactWeekRow: { height: 54 },
+  calendar: { overflow: 'hidden', paddingHorizontal: 16 },
+  weekdayRow: { height: 26, flexDirection: 'row', alignItems: 'center' },
+  weekday: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600' },
+  calendarGridViewport: { overflow: 'hidden' },
+  weekRow: { height: 48, flexDirection: 'row' },
   dateCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  weekday: { fontSize: 11, marginBottom: 4 },
   dateDot: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   dateNumber: { fontSize: 16, fontWeight: '600' },
-  calendarHandleButton: { height: 18, alignItems: 'center', justifyContent: 'center' },
-  calendarHandle: { width: 34, height: 4, borderRadius: 2, opacity: .42 },
+  calendarHandleTouch: { height: 28, alignItems: 'center', justifyContent: 'center' },
+  calendarHandleButton: { width: 104, height: 28, alignItems: 'center', justifyContent: 'center' },
+  calendarHandle: { width: 38, height: 4, borderRadius: 2, opacity: .46 },
   listPanel: { flex: 1, marginTop: 14 },
   listContent: { paddingHorizontal: 20, paddingBottom: 112 },
   emptyContent: { flexGrow: 1, paddingHorizontal: 20 },

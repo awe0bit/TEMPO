@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -44,8 +44,8 @@ export function SettingsScreen({ theme, snapshot, perform }: { theme: TempoTheme
       animationMatchesGesture: true,
       animation: 'slide_from_right',
     }}>
-      <Stack.Screen name="home" options={{ headerShown: false }}>
-        {({ navigation }) => <SettingsHome theme={theme} snapshot={snapshot} perform={perform} openPage={(page) => { setMessage(''); navigation.navigate('detail', { page }); }} />}
+      <Stack.Screen name="home" options={{ title: '设置' }}>
+        {({ navigation }) => <SettingsHome theme={theme} snapshot={snapshot} openPage={(page) => { setMessage(''); navigation.navigate('detail', { page }); }} />}
       </Stack.Screen>
       <Stack.Screen name="detail" options={({ route }) => ({ title: pageTitle(route.params.page) })}>
         {({ route }) => <DetailPage page={route.params.page} theme={theme} snapshot={snapshot} perform={perform} message={message} setMessage={setMessage} />}
@@ -54,12 +54,9 @@ export function SettingsScreen({ theme, snapshot, perform }: { theme: TempoTheme
   </NavigationContainer>;
 }
 
-function SettingsHome({ theme, snapshot, perform, openPage }: { theme: TempoTheme; snapshot: TempoSnapshot; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>; openPage: (page: Page) => void }) {
-  const taps = useRef<number[]>([]);
-  function developerTap() { const now = Date.now(); taps.current = [...taps.current.filter((value) => now - value < 1200), now]; if (taps.current.length >= 4) { taps.current = []; void perform('developer.open'); } }
+function SettingsHome({ theme, snapshot, openPage }: { theme: TempoTheme; snapshot: TempoSnapshot; openPage: (page: Page) => void }) {
   return <Screen theme={theme} backgroundColor={theme.groupedBackground}>
     <ScrollView contentContainerStyle={styles.content}>
-      <Pressable onPress={developerTap} onLongPress={() => perform('developer.open')}><Text style={[styles.title, { color: theme.text }]}>设置</Text></Pressable>
       <Section theme={theme} title="服务">
         <SettingRow theme={theme} icon="↻" tint={theme.accent} title="自托管同步" detail={snapshot.sync?.configured ? syncLabel(snapshot.sync.phase, snapshot.sync.pendingChangeCount) : '未配置'} onPress={() => openPage('sync')} /><Divider theme={theme} inset={58} />
         <SettingRow theme={theme} icon="✦" tint={theme.accent} title="AI 助手" detail={snapshot.ai?.configured ? snapshot.ai.model : '未配置'} onPress={() => openPage('ai')} /><Divider theme={theme} inset={58} />
@@ -90,4 +87,4 @@ function ChoiceRow({ theme, title, current, choices, unit, action }: any) { retu
 function syncLabel(phase?: string, pending = 0) { if (pending) return `${pending} 项待同步`; if (phase === 'syncing') return '正在同步'; if (phase === 'error') return '同步异常'; return '已实时同步'; }
 function pageTitle(page: Page) { return ({ sync: '自托管同步', ai: 'AI 助手', focus: '番茄钟', calendar: '日期与日历', update: '软件更新', modules: '功能模块' } as const)[page]; }
 function moduleTitle(value: string) { return ({ inbox: '收集箱', today: '今天', focus: '番茄钟', rss: 'RSS', settings: '设置' } as Record<string, string>)[value] ?? value; }
-const styles = StyleSheet.create({ content: { paddingTop: 12, paddingBottom: 60 }, title: { fontSize: 28, fontWeight: '800', letterSpacing: -.65, textAlign: 'center', paddingHorizontal: 20, marginBottom: 22 }, settingRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14 }, iconBox: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 }, icon: { color: '#fff', fontSize: 18, fontWeight: '700' }, settingText: { flex: 1 }, settingTitle: { fontSize: 17, fontWeight: '500', letterSpacing: -.15 }, settingDetail: { fontSize: 12, marginTop: 3 }, chevron: { fontSize: 25, fontWeight: '300' }, detailContent: { paddingTop: 18, paddingBottom: 60 }, field: { paddingHorizontal: 16, paddingVertical: 12 }, fieldLabel: { fontSize: 12, fontWeight: '500', marginBottom: 5 }, fieldInput: { fontSize: 16, padding: 0 }, buttonGap: { gap: 12 }, linkButton: { textAlign: 'center', fontSize: 15, fontWeight: '600', paddingVertical: 9 }, message: { textAlign: 'center', marginTop: 18, paddingHorizontal: 24 }, pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingVertical: 14 }, choice: { paddingHorizontal: 16, paddingVertical: 12 }, choiceTitle: { fontSize: 16, fontWeight: '600' }, moduleRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }, moduleTitle: { flex: 1, fontSize: 16, fontWeight: '500' }, moduleAction: { fontSize: 22, fontWeight: '600', paddingHorizontal: 12 }, });
+const styles = StyleSheet.create({ content: { paddingTop: 18, paddingBottom: 60 }, settingRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14 }, iconBox: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 }, icon: { color: '#fff', fontSize: 18, fontWeight: '700' }, settingText: { flex: 1 }, settingTitle: { fontSize: 17, fontWeight: '500', letterSpacing: -.15 }, settingDetail: { fontSize: 12, marginTop: 3 }, chevron: { fontSize: 25, fontWeight: '300' }, detailContent: { paddingTop: 18, paddingBottom: 60 }, field: { paddingHorizontal: 16, paddingVertical: 12 }, fieldLabel: { fontSize: 12, fontWeight: '500', marginBottom: 5 }, fieldInput: { fontSize: 16, padding: 0 }, buttonGap: { gap: 12 }, linkButton: { textAlign: 'center', fontSize: 15, fontWeight: '600', paddingVertical: 9 }, message: { textAlign: 'center', marginTop: 18, paddingHorizontal: 24 }, pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingVertical: 14 }, choice: { paddingHorizontal: 16, paddingVertical: 12 }, choiceTitle: { fontSize: 16, fontWeight: '600' }, moduleRow: { minHeight: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }, moduleTitle: { flex: 1, fontSize: 16, fontWeight: '500' }, moduleAction: { fontSize: 22, fontWeight: '600', paddingHorizontal: 12 }, });
