@@ -1,7 +1,7 @@
 name: tempo_android
 description: "TEMPO - Time, Everything, Moments, Productivity, Organized."
 publish_to: 'none'
-version: 0.5.7+168
+version: 0.5.8+169
 
 environment:
   sdk: ^3.9.2

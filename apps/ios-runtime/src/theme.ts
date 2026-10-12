@@ -7,6 +7,8 @@ export function makeTheme(scheme: ColorSchemeName | 'light' | 'dark') {
   return {
     dark,
     background: dark ? '#000000' : '#FFFFFF',
+    groupedBackground: dark ? '#000000' : '#F2F2F7',
+    groupedSurface: dark ? '#1C1C1E' : '#FFFFFF',
     surface: dark ? '#000000' : '#FFFFFF',
     surfaceElevated: dark ? '#000000' : '#FFFFFF',
     surfaceMuted: dark ? '#111318' : '#F2F5F8',

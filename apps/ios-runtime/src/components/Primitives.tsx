@@ -1,12 +1,14 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import BottomSheet, { BottomSheetView } from '@expo/ui/community/bottom-sheet';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { radius, spacing, type TempoTheme } from '../theme';
 
-export function Screen({ children, theme, scroll = false }: PropsWithChildren<{ theme: TempoTheme; scroll?: boolean }>) {
+export function Screen({ children, theme, scroll = false, backgroundColor }: PropsWithChildren<{ theme: TempoTheme; scroll?: boolean; backgroundColor?: string }>) {
   const content = <View style={styles.screenContent}>{children}</View>;
+  const color = backgroundColor ?? theme.background;
   return (
-    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+    <View style={[styles.screen, { backgroundColor: color }]}>
       {scroll ? <ScrollView contentContainerStyle={styles.scrollContent}>{content}</ScrollView> : content}
     </View>
   );
@@ -18,13 +20,13 @@ export function Section({ children, theme, title }: PropsWithChildren<{ theme: T
   return (
     <View style={styles.sectionWrap}>
       {title ? <Text style={[styles.sectionLabel, { color: theme.secondary }]}>{title}</Text> : null}
-      <View style={[styles.section, { borderColor: theme.separator }]}>{children}</View>
+      <View style={[styles.section, { backgroundColor: theme.groupedSurface }]}>{children}</View>
     </View>
   );
 }
 
-export function Divider({ theme }: { theme: TempoTheme }) {
-  return <View style={[styles.divider, { backgroundColor: theme.separator }]} />;
+export function Divider({ theme, inset = 18 }: { theme: TempoTheme; inset?: number }) {
+  return <View style={[styles.divider, { backgroundColor: theme.separator, marginLeft: inset }]} />;
 }
 
 export function Row({
@@ -80,14 +82,25 @@ export function PrimaryButton({ theme, label, onPress, loading, disabled }: {
   );
 }
 
-export function Sheet({ visible, onClose, children, theme }: PropsWithChildren<{ visible: boolean; onClose: () => void; theme: TempoTheme }>) {
+export function Sheet({ visible, onClose, children, theme, snapPoints = ['58%', '92%'], initialIndex = 0 }: PropsWithChildren<{
+  visible: boolean;
+  onClose: () => void;
+  theme: TempoTheme;
+  snapPoints?: (string | number)[];
+  initialIndex?: number;
+}>) {
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.sheet, { backgroundColor: theme.background }]}>
-        <View style={[styles.grabber, { backgroundColor: theme.tertiary }]} />
+    <BottomSheet
+      index={visible ? initialIndex : -1}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onClose={onClose}
+      backgroundStyle={{ backgroundColor: theme.background }}
+    >
+      <BottomSheetView style={[styles.sheet, { backgroundColor: theme.background }]}>
         {children}
-      </View>
-    </Modal>
+      </BottomSheetView>
+    </BottomSheet>
   );
 }
 
@@ -95,11 +108,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   screenContent: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
-  chromeGap: { height: 62 },
+  chromeGap: { height: 56 },
   sectionWrap: { marginHorizontal: 20, marginBottom: 24 },
-  sectionLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  section: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 18 },
+  sectionLabel: { fontSize: 13, fontWeight: '500', marginBottom: 8, marginLeft: 16, textTransform: 'uppercase' },
+  section: { borderRadius: 22, overflow: 'hidden' },
+  divider: { height: StyleSheet.hairlineWidth },
   row: { minHeight: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 11 },
   rowText: { flex: 1 },
   rowTitle: { fontSize: 16, fontWeight: '500', letterSpacing: -.1 },
@@ -110,6 +123,5 @@ const styles = StyleSheet.create({
   primary: { height: 50, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', marginHorizontal: 20 },
   primaryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   sheet: { flex: 1 },
-  grabber: { width: 38, height: 5, borderRadius: 3, alignSelf: 'center', opacity: .45, marginTop: 8, marginBottom: 8 },
   pressed: { opacity: .62 },
 });

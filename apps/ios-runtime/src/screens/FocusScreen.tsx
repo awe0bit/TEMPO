@@ -39,7 +39,7 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
           <View style={styles.controls}><RoundButton theme={theme} label="↶" onPress={() => perform('pomodoro.reset')} /><Pressable onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.mainButton, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}><Text style={styles.mainButtonText}>{state.status === 'running' ? 'Ⅱ' : '▶'}</Text></Pressable><RoundButton theme={theme} label="■" onPress={() => perform('pomodoro.stop')} /></View>
         )}
       </View>
-      <Sheet visible={statistics} onClose={() => setStatistics(false)} theme={theme}>
+      <Sheet visible={statistics} onClose={() => setStatistics(false)} theme={theme} snapPoints={['78%', '94%']}>
         <ScrollView contentContainerStyle={styles.stats}>
           <Text style={[styles.statsTitle, { color: theme.text }]}>专注统计</Text>
           <View style={styles.metrics}><Metric theme={theme} label="今日番茄" value={`${state.completedFocusSessions}`} /><Metric theme={theme} label="今日目标" value={`${state.dailyFocusGoal}`} /><Metric theme={theme} label="总专注" value={`${Math.round(state.focusHistory.reduce((sum, item) => sum + item.durationSeconds, 0) / 3600)}h`} /></View>

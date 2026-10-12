@@ -21,7 +21,7 @@ export default function App(props: RuntimeProps) {
   const { snapshot, route, theme } = tempo;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       {snapshot ? <RouteView tempo={tempo} /> : <View style={styles.loading}><ActivityIndicator color={theme.accent} /></View>}
       {tempo.error ? <View style={[styles.toast, { backgroundColor: theme.text }]}><Text style={{ color: theme.background, fontWeight: '600' }}>{tempo.error}</Text></View> : null}

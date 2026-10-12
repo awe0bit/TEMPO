@@ -13,7 +13,6 @@ final class TempoRuntimeAppDelegate: NSObject, UIApplicationDelegate {
 }
 
 struct TempoRuntimeScreen: View {
-  @State private var settingsVisible = false
   let route: AppTab
 
   var body: some View {
@@ -26,23 +25,8 @@ struct TempoRuntimeScreen: View {
         ]
       )
       .ignoresSafeArea(edges: .bottom)
-      .opacity(route == .settings ? (settingsVisible ? 1 : 0) : 1)
-      .offset(y: route == .settings && !settingsVisible ? 10 : 0)
 
       TempoRuntimeChrome(route: route)
-    }
-    .onAppear {
-      guard route == .settings else { return }
-      settingsVisible = false
-      DispatchQueue.main.async {
-        withAnimation(.easeOut(duration: 0.28)) {
-          settingsVisible = true
-        }
-      }
-    }
-    .onDisappear {
-      guard route == .settings else { return }
-      settingsVisible = false
     }
   }
 }
@@ -54,7 +38,14 @@ private struct TempoRuntimeChrome: View {
   let route: AppTab
 
   var body: some View {
-    ZStack {
+    ZStack(alignment: .top) {
+      if searchExpanded {
+        Color.clear
+          .contentShape(Rectangle())
+          .ignoresSafeArea()
+          .onTapGesture(perform: closeSearch)
+      }
+
       HStack(spacing: 10) {
         if searchExpanded || route == .inbox || route == .rss {
           searchControl
@@ -66,62 +57,64 @@ private struct TempoRuntimeChrome: View {
 
         if route != .settings {
           optionsMenu
+            .allowsHitTesting(!searchExpanded)
         }
       }
+      .padding(.horizontal, 18)
+      .padding(.top, 8)
     }
-    .padding(.horizontal, 18)
-    .padding(.top, 8)
-    .allowsHitTesting(true)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .onChange(of: route) { _, _ in
       closeSearch()
     }
   }
 
   private var searchControl: some View {
-    Group {
-      if searchExpanded {
-        HStack(spacing: 10) {
-          Image(systemName: "magnifyingglass")
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(TempoPalette.quiet)
-
-          TextField(searchPlaceholder, text: $searchText)
-            .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(TempoPalette.ink)
-            .tint(TempoPalette.accent)
-            .submitLabel(.search)
-            .focused($searchFocused)
-            .onChange(of: searchText) { _, value in
-              TempoNativeRegistry.shared.sendCommand("search", payload: ["query": value])
-            }
-
-          Button(action: closeSearch) {
-            Image(systemName: "xmark.circle.fill")
-              .font(.system(size: 17, weight: .semibold))
-              .foregroundStyle(TempoPalette.quiet)
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel("关闭搜索")
+    HStack(spacing: 0) {
+      Button {
+        if searchExpanded {
+          searchFocused = true
+        } else {
+          openSearch()
         }
-        .padding(.horizontal, 14)
-      } else {
-        Button(action: openSearch) {
-          Image(systemName: "magnifyingglass")
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(TempoPalette.ink)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("搜索")
+      } label: {
+        Image(systemName: "magnifyingglass")
+          .font(.system(size: 17, weight: .semibold))
+          .foregroundStyle(searchExpanded ? TempoPalette.quiet : TempoPalette.ink)
+          .frame(width: 48, height: 48)
+          .contentShape(Circle())
       }
+      .buttonStyle(.plain)
+      .accessibilityLabel("搜索")
+
+      TextField(searchPlaceholder, text: $searchText)
+        .font(.system(size: 16, weight: .medium))
+        .foregroundStyle(TempoPalette.ink)
+        .tint(TempoPalette.accent)
+        .submitLabel(.search)
+        .focused($searchFocused)
+        .disabled(!searchExpanded)
+        .opacity(searchExpanded ? 1 : 0)
+        .frame(width: searchExpanded ? searchExpandedWidth - 96 : 0, alignment: .leading)
+        .onChange(of: searchText) { _, value in
+          TempoNativeRegistry.shared.sendCommand("search", payload: ["query": value])
+        }
+
+      Button(action: closeSearch) {
+        Image(systemName: "xmark.circle.fill")
+          .font(.system(size: 17, weight: .semibold))
+          .foregroundStyle(TempoPalette.quiet)
+          .frame(width: searchExpanded ? 48 : 0, height: 48)
+      }
+      .buttonStyle(.plain)
+      .disabled(!searchExpanded)
+      .opacity(searchExpanded ? 1 : 0)
+      .accessibilityLabel("关闭搜索")
     }
     .frame(width: searchExpanded ? searchExpandedWidth : 48, height: 48)
+    .clipped()
     .tempoSearchSurface()
-    .animation(
-      .interactiveSpring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.12),
-      value: searchExpanded
-    )
+    .animation(.smooth(duration: 0.28, extraBounce: 0), value: searchExpanded)
   }
 
   private var searchExpandedWidth: CGFloat {
@@ -138,7 +131,7 @@ private struct TempoRuntimeChrome: View {
   }
 
   private func openSearch() {
-    withAnimation(.interactiveSpring(response: 0.34, dampingFraction: 0.86)) {
+    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
       searchExpanded = true
     }
     TempoNativeRegistry.shared.sendCommand("search", payload: ["query": searchText])
@@ -152,7 +145,7 @@ private struct TempoRuntimeChrome: View {
     searchFocused = false
     searchText = ""
     TempoNativeRegistry.shared.sendCommand("search", payload: ["query": ""])
-    withAnimation(.interactiveSpring(response: 0.30, dampingFraction: 0.88)) {
+    withAnimation(.smooth(duration: 0.24, extraBounce: 0)) {
       searchExpanded = false
     }
   }

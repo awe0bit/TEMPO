@@ -51,6 +51,11 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
     },
   }), [calendar, route]);
 
+  function setCalendarExpanded(next: boolean) {
+    expanded.current = next;
+    Animated.spring(calendar, { toValue: next ? 1 : 0, useNativeDriver: false, stiffness: 210, damping: 28, mass: .78 }).start();
+  }
+
   const scoped = useMemo(() => tasks
     .filter((task) => task.status !== 'cancelled')
     .filter((task) => route === 'inbox' ? !task.startAt : sameDay(task.startAt, selectedDate)),
@@ -111,9 +116,10 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
             {route === 'today' ? fullDate(selectedDate) : openCount ? `${openCount} 项待整理` : '随手记下，稍后安排'}
             {completedCount ? ` · ${completedCount} 项已完成` : ''}
           </Text>
+          {route === 'inbox' && quote ? <Text numberOfLines={2} style={[styles.ambientQuote, { color: theme.secondary }]}>“{quote}”</Text> : null}
         </View>
 
-        {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} /> : null}
+        {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} onToggle={() => setCalendarExpanded(!expanded.current)} /> : null}
 
         <View style={styles.listPanel}>
           <FlatList
@@ -129,7 +135,6 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
                 <Text style={[styles.groupCount, { color: theme.secondary }]}>{shown.length}</Text>
               </View>
             ) : null}
-            ListFooterComponent={route === 'inbox' && quote ? <Text style={[styles.quote, { color: theme.secondary }]}>“{quote}”</Text> : null}
             ListEmptyComponent={<EmptyState theme={theme} route={route} searching={!!query} />}
             renderItem={({ item, index }) => (
               <TaskRow
@@ -157,7 +162,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
         ) : null}
       </View>
 
-      <Sheet visible={composerVisible} onClose={closeComposer} theme={theme}>
+      <Sheet visible={composerVisible} onClose={closeComposer} theme={theme} snapPoints={['68%', '94%']}>
         <View style={styles.sheetBody}>
           <Text style={[styles.sheetTitle, { color: theme.text }]}>{editing ? '编辑任务' : route === 'today' ? '安排任务' : '记到收集箱'}</Text>
           <TextInput
@@ -187,23 +192,25 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
   );
 }
 
-function CalendarStrip({ theme, selected, onSelect, progress }: { theme: TempoTheme; selected: Date; onSelect: (date: Date) => void; progress: Animated.Value }) {
+function CalendarStrip({ theme, selected, onSelect, progress, onToggle }: { theme: TempoTheme; selected: Date; onSelect: (date: Date) => void; progress: Animated.Value; onToggle: () => void }) {
+  const [anchor, setAnchor] = useState(() => startOfWeek(selected));
+  useEffect(() => {
+    if (selected < anchor || selected > addDays(anchor, 41)) setAnchor(startOfWeek(selected));
+  }, [anchor, selected]);
   const days = useMemo(() => {
-    const today = new Date(); const weekday = (today.getDay() + 6) % 7; const monday = addDays(today, -weekday);
-    return Array.from({ length: 35 }, (_, index) => addDays(monday, index - 14));
-  }, []);
-  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [78, 278] });
-  const visible = progress.interpolate({ inputRange: [0, .18, 1], outputRange: [0, 0, 1] });
+    return Array.from({ length: 42 }, (_, index) => addDays(anchor, index));
+  }, [anchor]);
+  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [78, 354] });
   return (
     <Animated.View style={[styles.calendar, { height }]}>
-      <View style={styles.weekRow}>{days.slice(14, 21).map((date) => <DateCell key={date.toISOString()} date={date} selected={sameDay(date, selected)} theme={theme} onPress={() => onSelect(date)} />)}</View>
-      <Animated.View style={{ opacity: visible }}>{[0, 1, 2, 3].map((row) => <View key={row} style={styles.weekRow}>{days.slice(row * 7, row * 7 + 7).map((date) => <DateCell key={date.toISOString()} date={date} selected={sameDay(date, selected)} theme={theme} onPress={() => onSelect(date)} />)}</View>)}</Animated.View>
+      {[0, 1, 2, 3, 4, 5].map((row) => <View key={row} style={[styles.weekRow, row > 0 && styles.compactWeekRow]}>{days.slice(row * 7, row * 7 + 7).map((date) => <DateCell key={date.toISOString()} date={date} selected={sameDay(date, selected)} theme={theme} showWeekday={row === 0} onPress={() => onSelect(date)} />)}</View>)}
+      <Pressable onPress={onToggle} hitSlop={10} style={styles.calendarHandleButton}><View style={[styles.calendarHandle, { backgroundColor: theme.tertiary }]} /></Pressable>
     </Animated.View>
   );
 }
 
-function DateCell({ date, selected, theme, onPress }: { date: Date; selected: boolean; theme: TempoTheme; onPress: () => void }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><Text style={[styles.weekday, { color: theme.secondary }]}>{'一二三四五六日'[(date.getDay() + 6) % 7]}</Text><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : theme.text }]}>{date.getDate()}</Text></View></Pressable>;
+function DateCell({ date, selected, theme, onPress, showWeekday }: { date: Date; selected: boolean; theme: TempoTheme; onPress: () => void; showWeekday: boolean }) {
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}>{showWeekday ? <Text style={[styles.weekday, { color: theme.secondary }]}>{'一二三四五六日'[(date.getDay() + 6) % 7]}</Text> : null}<View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : theme.text }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
 function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onReschedule }: { task: TempoTask; theme: TempoTheme; separated: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onReschedule: (date?: string) => void }) {
@@ -241,6 +248,7 @@ function EmptyState({ theme, route, searching }: { theme: TempoTheme; route: str
 
 function sameDay(value: string | Date | null | undefined, compare: Date) { if (!value) return false; const date = typeof value === 'string' ? new Date(value) : value; return date.getFullYear() === compare.getFullYear() && date.getMonth() === compare.getMonth() && date.getDate() === compare.getDate(); }
 function addDays(date: Date, count: number) { const result = new Date(date); result.setDate(result.getDate() + count); return result; }
+function startOfWeek(date: Date) { return addDays(date, -((date.getDay() + 6) % 7)); }
 function dayTitle(date: Date) { const today = new Date(); if (sameDay(date, today)) return '今天'; if (sameDay(date, addDays(today, -1))) return '昨天'; if (sameDay(date, addDays(today, 1))) return '明天'; return `${date.getMonth() + 1}月${date.getDate()}日`; }
 function greeting() { const hour = new Date().getHours(); return hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好'; }
 function fullDate(date: Date) { const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']; return `${date.getMonth() + 1}月${date.getDate()}日  ${weekdays[date.getDay()]}`; }
@@ -251,12 +259,16 @@ const styles = StyleSheet.create({
   heading: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 14 },
   title: { fontSize: 34, fontWeight: '800', letterSpacing: -1.15 },
   subtitle: { fontSize: 14, lineHeight: 20, marginTop: 6 },
-  calendar: { overflow: 'hidden', paddingHorizontal: 16 },
+  ambientQuote: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingRight: 24 },
+  calendar: { overflow: 'hidden', paddingHorizontal: 16, paddingBottom: 12 },
   weekRow: { height: 66, flexDirection: 'row' },
+  compactWeekRow: { height: 54 },
   dateCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   weekday: { fontSize: 11, marginBottom: 4 },
   dateDot: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   dateNumber: { fontSize: 16, fontWeight: '600' },
+  calendarHandleButton: { height: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarHandle: { width: 34, height: 4, borderRadius: 2, opacity: .42 },
   listPanel: { flex: 1, marginTop: 14 },
   listContent: { paddingHorizontal: 20, paddingBottom: 112 },
   emptyContent: { flexGrow: 1, paddingHorizontal: 20 },
@@ -277,7 +289,6 @@ const styles = StyleSheet.create({
   taskDate: { fontSize: 12, fontWeight: '500', marginLeft: 10 },
   rowChevron: { fontSize: 23, fontWeight: '300', marginLeft: 8 },
   rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 53, right: 0, bottom: 0 },
-  quote: { fontSize: 13, lineHeight: 20, fontStyle: 'italic', paddingHorizontal: 20, paddingTop: 28, paddingBottom: 24 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 46 },
   emptyIcon: { fontSize: 46, fontWeight: '200' },
   emptyTitle: { fontSize: 19, fontWeight: '600', marginTop: 12 },
