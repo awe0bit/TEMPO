@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 
 import { NativeChromeGap, PrimaryButton, Screen, Sheet } from '../components/Primitives';
-import { radius, type TempoTheme } from '../theme';
+import type { TempoTheme } from '../theme';
 import type { TempoCommand, TempoTask } from '../types';
 
 type Props = {
@@ -115,7 +115,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} /> : null}
 
-        <View style={[styles.listPanel, { backgroundColor: theme.surface }]}>
+        <View style={styles.listPanel}>
           <FlatList
             data={shown}
             keyExtractor={(item) => item.id}
@@ -257,9 +257,9 @@ const styles = StyleSheet.create({
   weekday: { fontSize: 11, marginBottom: 4 },
   dateDot: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   dateNumber: { fontSize: 16, fontWeight: '600' },
-  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 14, borderRadius: radius.large, overflow: 'hidden' },
-  listContent: { paddingBottom: 112 },
-  emptyContent: { flexGrow: 1 },
+  listPanel: { flex: 1, marginTop: 14 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 112 },
+  emptyContent: { flexGrow: 1, paddingHorizontal: 20 },
   groupHeader: { height: 54, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 },
   groupTitle: { flex: 1, fontSize: 19, fontWeight: '700', letterSpacing: -.3 },
   groupCount: { fontSize: 13, fontWeight: '600' },

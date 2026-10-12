@@ -1,10 +1,10 @@
 import SwiftUI
 
 enum TempoPalette {
-  static let background = Color.adaptive(lightHex: 0xF7F9FC, darkHex: 0x000000)
-  static let secondaryBackground = Color.adaptive(lightHex: 0xEEF3F8, darkHex: 0x07090D)
-  static let surface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x0C0F14)
-  static let elevatedSurface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x151A21)
+  static let background = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x000000)
+  static let secondaryBackground = Color.adaptive(lightHex: 0xF2F5F8, darkHex: 0x111318)
+  static let surface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x000000)
+  static let elevatedSurface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x000000)
   static let ink = Color.adaptive(lightHex: 0x05070A, darkHex: 0xF5F7FA)
   static let quiet = Color.adaptive(lightHex: 0x606A76, darkHex: 0xA7AFBA)
   static let faint = Color.adaptive(lightHex: 0x98A1AC, darkHex: 0x68727F)

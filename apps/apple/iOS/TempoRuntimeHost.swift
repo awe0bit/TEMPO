@@ -48,17 +48,10 @@ struct TempoRuntimeScreen: View {
 }
 
 private struct TempoRuntimeChrome: View {
-  @EnvironmentObject private var store: AppStore
-  @State private var timerThumbX: CGFloat?
   @State private var searchExpanded = false
   @State private var searchText = ""
   @FocusState private var searchFocused: Bool
   let route: AppTab
-
-  private let timerControlWidth: CGFloat = 186
-  private let timerThumbWidth: CGFloat = 88
-  private let timerLeadingX: CGFloat = 4
-  private let timerTrailingX: CGFloat = 94
 
   var body: some View {
     ZStack {
@@ -74,10 +67,6 @@ private struct TempoRuntimeChrome: View {
         if route != .settings {
           optionsMenu
         }
-      }
-
-      if route == .pomodoro {
-        timerDirectionControl
       }
     }
     .padding(.horizontal, 18)
@@ -166,114 +155,6 @@ private struct TempoRuntimeChrome: View {
     withAnimation(.interactiveSpring(response: 0.30, dampingFraction: 0.88)) {
       searchExpanded = false
     }
-  }
-
-  private var timerDirectionControl: some View {
-    ZStack(alignment: .leading) {
-      Capsule()
-        .fill(.ultraThinMaterial)
-        .overlay {
-          Capsule()
-            .stroke(TempoPalette.separator.opacity(0.28), lineWidth: 0.5)
-        }
-
-      Group {
-        if #available(iOS 26.0, *) {
-          Color.clear
-            .glassEffect(
-              .regular.tint(TempoPalette.accent.opacity(0.24)).interactive(),
-              in: .capsule
-            )
-        } else {
-          Capsule()
-            .fill(TempoPalette.surface.opacity(0.88))
-            .shadow(color: .black.opacity(0.07), radius: 4, y: 2)
-        }
-      }
-      .frame(width: timerThumbWidth, height: 40)
-      .offset(x: resolvedTimerThumbX)
-      .allowsHitTesting(false)
-
-      HStack(spacing: 2) {
-        ForEach(PomodoroTimerDirection.allCases) { direction in
-          Text(direction.title)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(
-              timerVisualDirection == direction
-                ? TempoPalette.accent
-                : TempoPalette.quiet
-            )
-            .frame(width: timerThumbWidth, height: 40)
-        }
-      }
-      .padding(4)
-      .allowsHitTesting(false)
-    }
-    .frame(width: timerControlWidth, height: 48)
-    .contentShape(Capsule())
-    .gesture(timerDirectionDragGesture)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("计时方式")
-    .accessibilityValue(store.pomodoro.timerDirection.title)
-    .accessibilityAdjustableAction { adjustment in
-      switch adjustment {
-      case .increment: selectTimerDirection(.countUp)
-      case .decrement: selectTimerDirection(.countdown)
-      @unknown default: break
-      }
-    }
-  }
-
-  private var restingTimerThumbX: CGFloat {
-    store.pomodoro.timerDirection == .countdown ? timerLeadingX : timerTrailingX
-  }
-
-  private var resolvedTimerThumbX: CGFloat {
-    timerThumbX ?? restingTimerThumbX
-  }
-
-  private var timerVisualDirection: PomodoroTimerDirection {
-    resolvedTimerThumbX + timerThumbWidth / 2 < timerControlWidth / 2
-      ? .countdown
-      : .countUp
-  }
-
-  private var timerDirectionDragGesture: some Gesture {
-    DragGesture(minimumDistance: 0, coordinateSpace: .local)
-      .onChanged { value in
-        timerThumbX = clampedTimerThumbX(for: value.location.x)
-      }
-      .onEnded { value in
-        let actualX = clampedTimerThumbX(for: value.location.x)
-        let projectedX = clampedTimerThumbX(for: value.predictedEndLocation.x)
-        let landingX = abs(projectedX - actualX) > 5 ? projectedX : actualX
-        let target: PomodoroTimerDirection = landingX + timerThumbWidth / 2 < timerControlWidth / 2
-          ? .countdown
-          : .countUp
-        let changed = store.pomodoro.timerDirection != target
-        withAnimation(.interactiveSpring(response: 0.30, dampingFraction: 0.84, blendDuration: 0.12)) {
-          timerThumbX = nil
-          if changed {
-            store.setPomodoroTimerDirection(target)
-          }
-        }
-        if changed {
-          UISelectionFeedbackGenerator().selectionChanged()
-        }
-      }
-  }
-
-  private func clampedTimerThumbX(for touchX: CGFloat) -> CGFloat {
-    min(timerTrailingX, max(timerLeadingX, touchX - timerThumbWidth / 2))
-  }
-
-  private func selectTimerDirection(_ direction: PomodoroTimerDirection) {
-    guard store.pomodoro.timerDirection != direction else { return }
-    withAnimation(.interactiveSpring(response: 0.30, dampingFraction: 0.84, blendDuration: 0.12)) {
-      timerThumbX = nil
-      store.setPomodoroTimerDirection(direction)
-    }
-    UISelectionFeedbackGenerator().selectionChanged()
   }
 
   private func chromeButton(_ symbol: String, command: String) -> some View {

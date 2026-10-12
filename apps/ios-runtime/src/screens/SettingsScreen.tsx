@@ -34,7 +34,6 @@ export function SettingsScreen({ theme, snapshot, perform }: { theme: TempoTheme
   return <NavigationContainer theme={navigationTheme}>
     <Stack.Navigator screenOptions={{
       contentStyle: { backgroundColor: theme.background },
-      headerStyle: { backgroundColor: theme.background },
       headerTintColor: theme.accent,
       headerTitleStyle: { color: theme.text, fontWeight: '700' },
       headerShadowVisible: false,

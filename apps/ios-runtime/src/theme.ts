@@ -6,10 +6,10 @@ export function makeTheme(scheme: ColorSchemeName | 'light' | 'dark') {
   const dark = scheme === 'dark';
   return {
     dark,
-    background: dark ? '#000000' : '#F7F9FC',
-    surface: dark ? '#0C0F14' : '#FFFFFF',
-    surfaceElevated: dark ? '#151A21' : '#FFFFFF',
-    surfaceMuted: dark ? '#12161D' : '#EEF3F8',
+    background: dark ? '#000000' : '#FFFFFF',
+    surface: dark ? '#000000' : '#FFFFFF',
+    surfaceElevated: dark ? '#000000' : '#FFFFFF',
+    surfaceMuted: dark ? '#111318' : '#F2F5F8',
     text: dark ? '#F5F7FA' : '#05070A',
     secondary: dark ? '#A7AFBA' : '#606A76',
     tertiary: dark ? '#68727F' : '#98A1AC',
