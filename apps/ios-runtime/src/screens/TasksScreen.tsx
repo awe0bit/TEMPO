@@ -110,7 +110,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
-        <View style={styles.listPanel}>
+        <View style={[styles.listPanel, { backgroundColor: theme.surface }]}>
           <FlatList
             data={shown}
             keyExtractor={(item) => item.id}
@@ -209,7 +209,7 @@ function CalendarStrip({ theme, selected, onSelect, progress, expanded, onExpand
   const gridHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [48, 288] });
   const gridOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [-selectedRow * 48, 0] });
   return (
-    <Animated.View style={[styles.calendar, { height }]}>
+    <Animated.View style={[styles.calendar, { height, backgroundColor: theme.surface }]}>
       <View style={styles.weekdayRow}>{['一', '二', '三', '四', '五', '六', '日'].map((day) => <Text key={day} style={[styles.weekday, { color: theme.secondary }]}>{day}</Text>)}</View>
       <Animated.View style={[styles.calendarGridViewport, { height: gridHeight }]}>
         <Animated.View style={{ transform: [{ translateY: gridOffset }] }}>
@@ -270,42 +270,42 @@ function shortDate(value: string) { const date = new Date(value); return `${date
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  heading: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 14 },
-  title: { fontSize: 34, fontWeight: '800', letterSpacing: -1.15 },
-  subtitle: { fontSize: 14, lineHeight: 20, marginTop: 6 },
-  ambientQuote: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingRight: 24 },
-  calendar: { overflow: 'hidden', paddingHorizontal: 16 },
+  heading: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
+  title: { fontSize: 30, lineHeight: 37, fontWeight: '700', letterSpacing: -.75 },
+  subtitle: { fontSize: 15, lineHeight: 20, marginTop: 5 },
+  ambientQuote: { fontSize: 14, lineHeight: 20, marginTop: 10, paddingRight: 24 },
+  calendar: { overflow: 'hidden', marginHorizontal: 20, paddingHorizontal: 12, borderRadius: 24 },
   weekdayRow: { height: 26, flexDirection: 'row', alignItems: 'center' },
-  weekday: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '600' },
+  weekday: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '500' },
   calendarGridViewport: { overflow: 'hidden' },
   weekRow: { height: 48, flexDirection: 'row' },
   dateCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   dateDot: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  dateNumber: { fontSize: 16, fontWeight: '600' },
+  dateNumber: { fontSize: 16, fontWeight: '500' },
   calendarHandleTouch: { height: 28, alignItems: 'center', justifyContent: 'center' },
   calendarHandleButton: { width: 104, height: 28, alignItems: 'center', justifyContent: 'center' },
   calendarHandle: { width: 38, height: 4, borderRadius: 2, opacity: .46 },
-  listPanel: { flex: 1, marginTop: 14 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 112 },
-  emptyContent: { flexGrow: 1, paddingHorizontal: 20 },
-  groupHeader: { height: 54, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 },
-  groupTitle: { flex: 1, fontSize: 19, fontWeight: '700', letterSpacing: -.3 },
+  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 16, marginBottom: 12, borderRadius: 24, overflow: 'hidden' },
+  listContent: { paddingBottom: 104 },
+  emptyContent: { flexGrow: 1 },
+  groupHeader: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
+  groupTitle: { flex: 1, fontSize: 18, fontWeight: '600', letterSpacing: -.2 },
   groupCount: { fontSize: 13, fontWeight: '600' },
   swipeWrap: { minHeight: 72, overflow: 'hidden' },
   actions: { ...StyleSheet.absoluteFill, flexDirection: 'row', justifyContent: 'flex-end' },
   action: { width: 74, justifyContent: 'center', alignItems: 'center' },
   actionText: { color: '#fff', fontWeight: '600' },
-  taskRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
+  taskRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', paddingLeft: 20 },
   checkbox: { width: 24, height: 24, borderWidth: 1.6, borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginRight: 13 },
   check: { color: '#fff', fontWeight: '800' },
   taskMain: { minHeight: 72, flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
   taskText: { flex: 1, paddingVertical: 12 },
-  taskTitle: { fontSize: 17, fontWeight: '500', lineHeight: 22 },
-  taskNotes: { fontSize: 13, lineHeight: 18, marginTop: 3 },
+  taskTitle: { fontSize: 17, fontWeight: '400', lineHeight: 22 },
+  taskNotes: { fontSize: 14, lineHeight: 19, marginTop: 3 },
   taskDate: { fontSize: 12, fontWeight: '500', marginLeft: 10 },
   rowChevron: { fontSize: 23, fontWeight: '300', marginLeft: 8 },
   rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 53, right: 0, bottom: 0 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 46 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26, paddingBottom: 46 },
   emptyIcon: { fontSize: 46, fontWeight: '200' },
   emptyTitle: { fontSize: 19, fontWeight: '600', marginTop: 12 },
   emptyBody: { fontSize: 14, marginTop: 6 },
@@ -313,8 +313,8 @@ const styles = StyleSheet.create({
   plus: { color: '#fff', fontSize: 29, lineHeight: 33, fontWeight: '300' },
   undo: { position: 'absolute', left: 20, bottom: 23, borderRadius: 20, paddingHorizontal: 16, height: 42, justifyContent: 'center' },
   sheetBody: { flex: 1, paddingTop: 18 },
-  sheetTitle: { fontSize: 30, fontWeight: '800', letterSpacing: -.8, paddingHorizontal: 20, marginBottom: 20 },
-  titleInput: { marginHorizontal: 20, height: 58, borderRadius: 16, paddingHorizontal: 16, fontSize: 17 },
-  notesInput: { marginHorizontal: 20, minHeight: 112, borderRadius: 16, padding: 16, fontSize: 15, lineHeight: 21, marginTop: 12 },
+  sheetTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -.45, paddingHorizontal: 24, marginBottom: 20 },
+  titleInput: { marginHorizontal: 20, height: 60, borderRadius: 24, paddingHorizontal: 20, fontSize: 17 },
+  notesInput: { marginHorizontal: 20, minHeight: 116, borderRadius: 24, padding: 20, fontSize: 16, lineHeight: 22, marginTop: 12 },
   destination: { fontSize: 13, lineHeight: 18, marginHorizontal: 22, marginTop: 12, marginBottom: 20 },
 });

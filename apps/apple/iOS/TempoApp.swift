@@ -31,6 +31,7 @@ struct TempoApp: App {
         .environmentObject(store)
         .environmentObject(rssStore)
         .environmentObject(updateChecker)
+        .preferredColorScheme(.light)
     }
     .backgroundTask(.appRefresh(RSSBackgroundRefresh.identifier)) {
       await rssStore.refresh()
