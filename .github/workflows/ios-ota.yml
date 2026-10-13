@@ -4,8 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "apps/ios-runtime/**"
-      - ".github/workflows/ios-ota.yml"
+      - "apps/ios-runtime/src/**"
+      - "apps/ios-runtime/index.ts"
+      - "apps/ios-runtime/babel.config.js"
+      - "apps/ios-runtime/metro.config.js"
   workflow_dispatch:
     inputs:
       channel:
@@ -47,55 +49,8 @@ jobs:
           echo "TEMPO_APP_VERSION=$version" >> "$GITHUB_ENV"
       - run: npm run export:ios
 
-  build-native-runtime:
-    runs-on: macos-26
-    defaults:
-      run:
-        working-directory: apps/ios-runtime
-    steps:
-      - uses: actions/checkout@v7
-      - name: Select Xcode with Swift 6.3
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-      - name: Verify Apple toolchain
-        shell: bash
-        run: |
-          xcodebuild -version
-          xcrun swift --version
-          xcrun swift --version | grep -Eq 'Swift version 6\.[3-9]|Swift version [7-9]\.'
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: apps/ios-runtime/package-lock.json
-      - run: npm ci
-      - name: Resolve native runtime version
-        shell: bash
-        run: |
-          version="$(sed -nE 's/^version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' ../flutter/pubspec.yaml)"
-          test -n "$version"
-          echo "TEMPO_APP_VERSION=$version" >> "$GITHUB_ENV"
-      - name: Generate native iOS runtime
-        env:
-          CI: "1"
-        run: npm run prebuild:ios
-      - name: Build isolated Swift Package
-        run: npm run build:brownfield:ios
-      - name: Verify Swift Package
-        shell: bash
-        run: |
-          test -f artifacts/TempoRuntimePackage-release/Package.swift
-          find artifacts/TempoRuntimePackage-release -maxdepth 2 -type f | sort
-      - uses: actions/upload-artifact@v6
-        with:
-          name: tempo-ios-runtime-package
-          path: apps/ios-runtime/artifacts/TempoRuntimePackage-release
-          if-no-files-found: error
-          retention-days: 3
-
   publish-update:
-    needs: [validate-runtime, build-native-runtime]
+    needs: validate-runtime
     runs-on: ubuntu-latest
     defaults:
       run:

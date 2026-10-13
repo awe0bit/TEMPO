@@ -247,12 +247,10 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
 
     func install(on tabBar: UITabBar) {
       guard installedTabBar !== tabBar else {
+        updateSelection()
         return
       }
       uninstall()
-
-      tabBar.window?.backgroundColor = .tempoCanvas
-      tabBar.superview?.backgroundColor = .tempoCanvas
 
       let tap = UITapGestureRecognizer(target: self, action: #selector(handleFourTaps(_:)))
       tap.numberOfTapsRequired = 4
@@ -269,6 +267,7 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
       installedTabBar = tabBar
       tapRecognizer = tap
       longPressRecognizer = longPress
+      updateSelection(animated: false)
     }
 
     private func uninstall() {
@@ -289,6 +288,58 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
     private func reveal() {
       UIImpactFeedbackGenerator(style: .medium).impactOccurred()
       onReveal()
+    }
+
+    private func updateSelection(animated: Bool = true) {
+      guard let tabBar = installedTabBar else { return }
+      tabBar.layoutIfNeeded()
+      let allControls = tabBar.subviews
+        .compactMap { $0 as? UIControl }
+        .sorted { $0.frame.minX < $1.frame.minX }
+      let tabButtons = allControls.filter {
+        NSStringFromClass(type(of: $0)).contains("TabBarButton")
+      }
+      let controls = tabButtons.count == visibleTabs.count ? tabButtons : Array(allControls.prefix(visibleTabs.count))
+      guard controls.count == visibleTabs.count,
+            let selectedIndex = visibleTabs.firstIndex(of: selection) else { return }
+
+      for (index, control) in controls.enumerated() {
+        let tag = 0x54454D50
+        let pill: UIView
+        if let existing = control.viewWithTag(tag) {
+          pill = existing
+        } else {
+          let created = UIView(frame: .zero)
+          created.tag = tag
+          created.isUserInteractionEnabled = false
+          created.backgroundColor = UIColor.tempoTabSelectionFill
+          created.layer.cornerCurve = .continuous
+          created.layer.borderWidth = 0.7
+          created.layer.borderColor = UIColor.tempoTabSelectionStroke.cgColor
+          created.layer.shadowColor = UIColor.black.cgColor
+          created.layer.shadowOffset = CGSize(width: 0, height: 3)
+          created.layer.shadowRadius = 8
+          created.layer.shadowOpacity = 0
+          control.insertSubview(created, at: 0)
+          pill = created
+        }
+
+        let targetFrame = control.bounds.insetBy(dx: 3, dy: 3)
+        pill.frame = targetFrame
+        pill.layer.cornerRadius = max(18, targetFrame.height / 2)
+        let selected = index == selectedIndex
+        let changes = {
+          pill.alpha = selected ? 1 : 0
+          pill.transform = selected ? .identity : CGAffineTransform(scaleX: 0.66, y: 0.82)
+          pill.layer.shadowOpacity = selected ? 0.10 : 0
+          control.transform = selected ? CGAffineTransform(scaleX: 1.065, y: 1.065) : .identity
+        }
+        if animated && !UIAccessibility.isReduceMotionEnabled {
+          UIViewPropertyAnimator(duration: 0.42, dampingRatio: 0.78, animations: changes).startAnimation()
+        } else {
+          changes()
+        }
+      }
     }
 
     private func isSettingsItem(at point: CGPoint) -> Bool {
@@ -327,12 +378,22 @@ private extension UIViewController {
 }
 
 private extension UIColor {
-  static let tempoCanvas = UIColor(red: 0xF3 / 255, green: 0xF4 / 255, blue: 0xF5 / 255, alpha: 1)
-
   static let tempoTabAccent = UIColor { traits in
     traits.userInterfaceStyle == .dark
-      ? UIColor(red: 0x33 / 255, green: 0x9C / 255, blue: 1.00, alpha: 1)
-      : UIColor(red: 0x33 / 255, green: 0x9C / 255, blue: 1.00, alpha: 1)
+      ? UIColor(red: 0.49, green: 0.65, blue: 1.00, alpha: 1)
+      : UIColor(red: 0.20, green: 0.41, blue: 0.91, alpha: 1)
+  }
+
+  static let tempoTabSelectionFill = UIColor { traits in
+    traits.userInterfaceStyle == .dark
+      ? UIColor(red: 0.20, green: 0.29, blue: 0.46, alpha: 0.74)
+      : UIColor(red: 0.88, green: 0.92, blue: 1.00, alpha: 0.94)
+  }
+
+  static let tempoTabSelectionStroke = UIColor { traits in
+    traits.userInterfaceStyle == .dark
+      ? UIColor(red: 0.49, green: 0.65, blue: 1.00, alpha: 0.32)
+      : UIColor(red: 0.20, green: 0.41, blue: 0.91, alpha: 0.18)
   }
 }
 
@@ -347,8 +408,12 @@ private struct TempoTabLabel: View {
     } icon: {
       Image(systemName: tab.symbol)
         .symbolVariant(isSelected ? .fill : .none)
-        .scaleEffect(isSelected ? 1.06 : 1)
+        .fontWeight(isSelected ? .semibold : .regular)
+        .scaleEffect(isSelected ? 1.14 : 1)
+        .offset(y: isSelected ? -1 : 0)
+        .symbolEffect(.bounce, value: isSelected)
     }
-    .animation(.snappy(duration: 0.22, extraBounce: 0.03), value: isSelected)
+    .contentTransition(.symbolEffect(.replace))
+    .animation(.snappy(duration: 0.28, extraBounce: 0.08), value: isSelected)
   }
 }

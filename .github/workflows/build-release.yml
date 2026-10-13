@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
     paths-ignore:
       - "apps/ios-runtime/**"
+      - "apps/apple/iOS/**"
+      - "apps/apple/Configuration/TempoiOS.entitlements"
+      - "apps/apple/Configuration/TempoWidgets.entitlements"
+      - ".github/workflows/build-release.yml"
+      - ".github/workflows/ios-native-release.yml"
       - ".github/workflows/ios-ota.yml"
   pull_request:
   workflow_dispatch:
