@@ -10,6 +10,7 @@ on:
       - "apps/ios-runtime/package.json"
       - "apps/ios-runtime/package-lock.json"
       - "apps/ios-runtime/app.config.js"
+      - "apps/ios-runtime/runtime-version.txt"
       - "apps/ios-runtime/scripts/**"
       - ".github/workflows/ios-native-release.yml"
   workflow_dispatch:
