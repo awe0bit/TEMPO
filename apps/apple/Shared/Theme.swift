@@ -5,18 +5,18 @@ enum TempoPalette {
   static let secondaryBackground = Color.adaptive(lightHex: 0xF3F4F5, darkHex: 0xF3F4F5)
   static let surface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0xFFFFFF)
   static let elevatedSurface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0xFFFFFF)
-  static let ink = Color.adaptive(lightHex: 0x050505, darkHex: 0x050505)
+  static let ink = Color.adaptive(lightHex: 0x1A1C1F, darkHex: 0x1A1C1F)
   static let quiet = Color.adaptive(lightHex: 0x74777C, darkHex: 0x74777C)
   static let faint = Color.adaptive(lightHex: 0x96999E, darkHex: 0x96999E)
   static let separator = Color.adaptive(lightHex: 0xE4E5E7, darkHex: 0xE4E5E7)
   static let accent = Color.adaptive(
-    lightHex: 0x007AFF,
-    darkHex: 0x007AFF
+    lightHex: 0x339CFF,
+    darkHex: 0x339CFF
   )
   static let onAccent = Color.white
   static let selected = Color.adaptive(
-    lightHex: 0xEAF3FF,
-    darkHex: 0xEAF3FF
+    lightHex: 0xEAF5FF,
+    darkHex: 0xEAF5FF
   )
   static let success = Color.adaptive(
     lightHex: 0x2E7D64,

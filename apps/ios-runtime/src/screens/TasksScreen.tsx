@@ -3,6 +3,7 @@ import {
   Animated, FlatList, Keyboard, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 
+import { NativeSymbol } from '../components/NativeControls';
 import { NativeChromeGap, PrimaryButton, Screen, Sheet } from '../components/Primitives';
 import type { TempoTheme } from '../theme';
 import type { TempoCommand, TempoTask } from '../types';
@@ -138,10 +139,6 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
           />
         </View>
 
-        <Pressable onPress={() => openComposer()} style={({ pressed }) => [styles.fab, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}>
-          <Text style={styles.plus}>＋</Text>
-        </Pressable>
-
         {undo ? (
           <Pressable onPress={() => { perform('task.restore', { id: undo.id }); setUndo(undefined); }} style={[styles.undo, { backgroundColor: theme.text }]}>
             <Text style={{ color: theme.background, fontWeight: '700' }}>↶  撤销删除</Text>
@@ -195,19 +192,19 @@ function CalendarStrip({ theme, selected, onSelect, progress, expanded, onExpand
   const pan = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 3 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
     onPanResponderGrant: () => { dragStart.current = expanded ? 1 : 0; },
-    onPanResponderMove: (_, gesture) => progress.setValue(Math.max(0, Math.min(1, dragStart.current + gesture.dy / 230))),
+    onPanResponderMove: (_, gesture) => progress.setValue(Math.max(0, Math.min(1, dragStart.current + gesture.dy / 210))),
     onPanResponderRelease: (_, gesture) => {
-      const position = Math.max(0, Math.min(1, dragStart.current + gesture.dy / 230));
+      const position = Math.max(0, Math.min(1, dragStart.current + gesture.dy / 210));
       onExpandedChange(gesture.vy > .22 ? true : gesture.vy < -.22 ? false : position >= .5);
     },
     onPanResponderTerminate: (_, gesture) => {
-      const position = Math.max(0, Math.min(1, dragStart.current + gesture.dy / 230));
+      const position = Math.max(0, Math.min(1, dragStart.current + gesture.dy / 210));
       onExpandedChange(position >= .5);
     },
   }), [expanded, onExpandedChange, progress]);
-  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [102, 342] });
-  const gridHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [48, 288] });
-  const gridOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [-selectedRow * 48, 0] });
+  const height = progress.interpolate({ inputRange: [0, 1], outputRange: [88, 298] });
+  const gridHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [42, 252] });
+  const gridOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [-selectedRow * 42, 0] });
   return (
     <Animated.View style={[styles.calendar, { height, backgroundColor: theme.surface }]}>
       <View style={styles.weekdayRow}>{['一', '二', '三', '四', '五', '六', '日'].map((day) => <Text key={day} style={[styles.weekday, { color: theme.secondary }]}>{day}</Text>)}</View>
@@ -257,7 +254,7 @@ function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onResched
 }
 
 function EmptyState({ theme, route, searching }: { theme: TempoTheme; route: string; searching: boolean }) {
-  return <View style={styles.empty}><Text style={[styles.emptyIcon, { color: theme.tertiary }]}>{searching ? '⌕' : '✓'}</Text><Text style={[styles.emptyTitle, { color: theme.text }]}>{searching ? '没有匹配的任务' : route === 'today' ? '这一天没有任务' : '收集箱已经清空'}</Text><Text style={[styles.emptyBody, { color: theme.secondary }]}>{searching ? '换个关键词试试' : route === 'today' ? '留一点时间给自己' : '想到什么就先记下来'}</Text></View>;
+  return <View style={styles.empty}><NativeSymbol name={searching ? 'magnifyingglass' : 'checkmark.circle'} color={theme.tertiary} size={30} /><Text style={[styles.emptyTitle, { color: theme.text }]}>{searching ? '没有匹配的任务' : route === 'today' ? '这一天没有任务' : '收集箱已经清空'}</Text><Text style={[styles.emptyBody, { color: theme.secondary }]}>{searching ? '换个关键词试试' : route === 'today' ? '留一点时间给自己' : '想到什么就先记下来'}</Text></View>;
 }
 
 function sameDay(value: string | Date | null | undefined, compare: Date) { if (!value) return false; const date = typeof value === 'string' ? new Date(value) : value; return date.getFullYear() === compare.getFullYear() && date.getMonth() === compare.getMonth() && date.getDate() === compare.getDate(); }
@@ -274,18 +271,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, lineHeight: 37, fontWeight: '700', letterSpacing: -.75 },
   subtitle: { fontSize: 15, lineHeight: 20, marginTop: 5 },
   ambientQuote: { fontSize: 14, lineHeight: 20, marginTop: 10, paddingRight: 24 },
-  calendar: { overflow: 'hidden', marginHorizontal: 20, paddingHorizontal: 12, borderRadius: 24 },
-  weekdayRow: { height: 26, flexDirection: 'row', alignItems: 'center' },
+  calendar: { overflow: 'hidden', marginHorizontal: 20, paddingHorizontal: 12, borderRadius: 22 },
+  weekdayRow: { height: 24, flexDirection: 'row', alignItems: 'center' },
   weekday: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '500' },
   calendarGridViewport: { overflow: 'hidden' },
-  weekRow: { height: 48, flexDirection: 'row' },
+  weekRow: { height: 42, flexDirection: 'row' },
   dateCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  dateDot: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  dateNumber: { fontSize: 16, fontWeight: '500' },
-  calendarHandleTouch: { height: 28, alignItems: 'center', justifyContent: 'center' },
-  calendarHandleButton: { width: 104, height: 28, alignItems: 'center', justifyContent: 'center' },
-  calendarHandle: { width: 38, height: 4, borderRadius: 2, opacity: .46 },
-  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 16, marginBottom: 78 },
+  dateDot: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  dateNumber: { fontSize: 15, fontWeight: '500' },
+  calendarHandleTouch: { height: 22, alignItems: 'center', justifyContent: 'center' },
+  calendarHandleButton: { width: 104, height: 22, alignItems: 'center', justifyContent: 'center' },
+  calendarHandle: { width: 34, height: 4, borderRadius: 2, opacity: .38 },
+  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 14, marginBottom: 78 },
   listContent: { borderRadius: 24, overflow: 'hidden' },
   emptyContent: { flexGrow: 1 },
   groupHeader: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
@@ -305,12 +302,9 @@ const styles = StyleSheet.create({
   taskDate: { fontSize: 12, fontWeight: '500', marginLeft: 10 },
   rowChevron: { fontSize: 23, fontWeight: '300', marginLeft: 8 },
   rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 53, right: 0, bottom: 0 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26, paddingBottom: 46 },
-  emptyIcon: { fontSize: 46, fontWeight: '200' },
-  emptyTitle: { fontSize: 19, fontWeight: '600', marginTop: 12 },
-  emptyBody: { fontSize: 14, marginTop: 6 },
-  fab: { position: 'absolute', right: 20, bottom: 18, width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: .12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
-  plus: { color: '#fff', fontSize: 29, lineHeight: 33, fontWeight: '300' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 26, paddingTop: 92 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 10 },
+  emptyBody: { fontSize: 14, marginTop: 5 },
   undo: { position: 'absolute', left: 20, bottom: 23, borderRadius: 20, paddingHorizontal: 16, height: 42, justifyContent: 'center' },
   sheetBody: { flex: 1, paddingTop: 18 },
   sheetTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -.45, paddingHorizontal: 24, marginBottom: 20 },
