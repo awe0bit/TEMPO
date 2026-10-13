@@ -77,6 +77,15 @@ jobs:
           cache: npm
           cache-dependency-path: apps/ios-runtime/package-lock.json
 
+      - name: Guard runtime host layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Fq '.background(TempoPalette.background.ignoresSafeArea())' apps/apple/iOS/TempoApp.swift; then
+            echo 'Do not attach an infinite safe-area background directly to TabView; it collapses the brownfield runtime content on iOS.' >&2
+            exit 1
+          fi
+
       - name: Build embedded React Native runtime
         working-directory: apps/ios-runtime
         env:
