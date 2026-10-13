@@ -6,7 +6,7 @@ import { radius, spacing, type TempoTheme } from '../theme';
 
 export function Screen({ children, theme, scroll = false, backgroundColor }: PropsWithChildren<{ theme: TempoTheme; scroll?: boolean; backgroundColor?: string }>) {
   const content = <View style={styles.screenContent}>{children}</View>;
-  const color = backgroundColor ?? theme.background;
+  const color = backgroundColor ?? theme.groupedBackground;
   return (
     <View style={[styles.screen, { backgroundColor: color }]}>
       {scroll ? <ScrollView contentContainerStyle={styles.scrollContent}>{content}</ScrollView> : content}
@@ -66,8 +66,8 @@ export function Pill({ theme, label, selected, onPress }: {
   theme: TempoTheme; label: string; selected?: boolean; onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, { backgroundColor: selected ? theme.accentSoft : theme.surfaceMuted }, pressed && styles.pressed]}>
-      <Text style={[styles.pillText, { color: selected ? theme.accent : theme.secondary }]}>{label}</Text>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, { backgroundColor: selected ? theme.accent : theme.surface }, pressed && styles.pressed]}>
+      <Text style={[styles.pillText, { color: selected ? '#FFFFFF' : theme.text }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -76,8 +76,8 @@ export function PrimaryButton({ theme, label, onPress, loading, disabled }: {
   theme: TempoTheme; label: string; onPress: () => void; loading?: boolean; disabled?: boolean;
 }) {
   return (
-    <Pressable disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.primary, { backgroundColor: theme.accent, opacity: disabled ? .42 : pressed ? .78 : 1 }]}>
-      {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{label}</Text>}
+    <Pressable disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.primary, { backgroundColor: theme.surface, opacity: disabled ? .42 : pressed ? .62 : 1 }]}>
+      {loading ? <ActivityIndicator color={theme.accent} /> : <Text style={[styles.primaryText, { color: theme.accent }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -95,9 +95,9 @@ export function Sheet({ visible, onClose, children, theme, snapPoints = ['58%', 
       snapPoints={snapPoints}
       enablePanDownToClose
       onClose={onClose}
-      backgroundStyle={{ backgroundColor: theme.background }}
+      backgroundStyle={{ backgroundColor: theme.groupedBackground }}
     >
-      <BottomSheetView style={[styles.sheet, { backgroundColor: theme.background }]}>
+      <BottomSheetView style={[styles.sheet, { backgroundColor: theme.groupedBackground }]}>
         {children}
       </BottomSheetView>
     </BottomSheet>
@@ -107,21 +107,21 @@ export function Sheet({ visible, onClose, children, theme, snapPoints = ['58%', 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   screenContent: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
+  scrollContent: { paddingBottom: 44 },
   chromeGap: { height: 56 },
-  sectionWrap: { marginHorizontal: 20, marginBottom: 24 },
-  sectionLabel: { fontSize: 13, fontWeight: '500', marginBottom: 8, marginLeft: 16, textTransform: 'uppercase' },
+  sectionWrap: { marginHorizontal: 20, marginBottom: 16 },
+  sectionLabel: { fontSize: 14, lineHeight: 19, fontWeight: '500', marginBottom: 7, marginLeft: 12 },
   section: { borderRadius: 22, overflow: 'hidden' },
   divider: { height: StyleSheet.hairlineWidth },
-  row: { minHeight: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 11 },
+  row: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
   rowText: { flex: 1 },
-  rowTitle: { fontSize: 16, fontWeight: '500', letterSpacing: -.1 },
-  rowDetail: { fontSize: 13, lineHeight: 18, marginTop: 3 },
-  chevron: { fontSize: 25, fontWeight: '300' },
-  pill: { height: 34, paddingHorizontal: spacing.md, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  pillText: { fontSize: 14, fontWeight: '600' },
-  primary: { height: 50, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', marginHorizontal: 20 },
-  primaryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  rowTitle: { fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -.2 },
+  rowDetail: { fontSize: 14, lineHeight: 19, marginTop: 3 },
+  chevron: { fontSize: 28, fontWeight: '300' },
+  pill: { height: 38, paddingHorizontal: spacing.lg, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  pillText: { fontSize: 15, fontWeight: '600' },
+  primary: { height: 58, borderRadius: radius.large, alignItems: 'center', justifyContent: 'center', marginHorizontal: 20 },
+  primaryText: { fontSize: 17, fontWeight: '600' },
   sheet: { flex: 1 },
   pressed: { opacity: .62 },
 });
