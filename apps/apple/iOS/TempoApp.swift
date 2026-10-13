@@ -68,7 +68,6 @@ private struct iOSRootView: View {
       }
       .tint(TempoPalette.accent)
       .disabled(showingLaunchExperience)
-      .background(TempoPalette.background.ignoresSafeArea())
       .background {
         TempoTabBarBridge(selection: selection, visibleTabs: visibleTabs) {
           developerToolsDetent = .medium

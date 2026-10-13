@@ -17,8 +17,6 @@ struct TempoRuntimeScreen: View {
 
   var body: some View {
     ZStack(alignment: .top) {
-      TempoPalette.background.ignoresSafeArea()
-
       ReactNativeView(
         moduleName: "main",
         initialProps: [
@@ -26,10 +24,13 @@ struct TempoRuntimeScreen: View {
           "locale": Locale.current.identifier,
         ]
       )
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(TempoPalette.background)
       .ignoresSafeArea(edges: .bottom)
 
       TempoRuntimeChrome(route: route)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(TempoPalette.background.ignoresSafeArea())
   }
 }
