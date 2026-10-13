@@ -343,6 +343,7 @@ final class RSSStore: ObservableObject {
       let settings = await center.notificationSettings()
       var allowed = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
       if settings.authorizationStatus == .notDetermined {
+        await TempoPermissionGate.shared.waitUntilAppReady()
         allowed = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
       }
       guard allowed else { return false }

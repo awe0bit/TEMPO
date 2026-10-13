@@ -80,6 +80,7 @@ private struct iOSRootView: View {
       if showingLaunchExperience {
         TempoLaunchExperience {
           showingLaunchExperience = false
+          Task { await TempoPermissionGate.shared.markAppReady() }
           checkForUpdates()
         }
         .zIndex(10)

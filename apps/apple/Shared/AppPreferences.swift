@@ -46,6 +46,27 @@ import AudioToolbox
 import UIKit
 import UserNotifications
 
+actor TempoPermissionGate {
+  static let shared = TempoPermissionGate()
+
+  private var isReady = false
+  private var waiters: [CheckedContinuation<Void, Never>] = []
+
+  func markAppReady() {
+    guard !isReady else { return }
+    isReady = true
+    waiters.forEach { $0.resume() }
+    waiters.removeAll()
+  }
+
+  func waitUntilAppReady() async {
+    guard !isReady else { return }
+    await withCheckedContinuation { continuation in
+      waiters.append(continuation)
+    }
+  }
+}
+
 enum TempoFeedback {
   static func selection(enabled: Bool) {
     guard enabled else { return }
@@ -79,6 +100,7 @@ enum TempoDailyReminder {
     var authorized = settings.authorizationStatus == .authorized
       || settings.authorizationStatus == .provisional
     if settings.authorizationStatus == .notDetermined {
+      await TempoPermissionGate.shared.waitUntilAppReady()
       authorized = try await center.requestAuthorization(options: [.alert, .sound, .badge])
     }
     guard authorized else { return false }
