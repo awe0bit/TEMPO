@@ -2,25 +2,22 @@ import type { ColorSchemeName } from 'react-native';
 
 export type TempoTheme = ReturnType<typeof makeTheme>;
 
-export function makeTheme(_scheme: ColorSchemeName | 'light' | 'dark') {
-  // The iOS runtime intentionally uses one light, neutral canvas. Keeping the
-  // palette deterministic also prevents an OTA from rendering half light and
-  // half dark while the native chrome is being restored after launch.
-  const dark = false;
+export function makeTheme(scheme: ColorSchemeName | 'light' | 'dark') {
+  const dark = scheme === 'dark';
   return {
     dark,
-    background: '#F3F4F5',
-    groupedBackground: '#F3F4F5',
-    groupedSurface: '#FFFFFF',
-    surface: '#FFFFFF',
-    surfaceElevated: '#FFFFFF',
-    surfaceMuted: '#EAEBED',
-    text: '#1A1C1F',
-    secondary: '#74777C',
-    tertiary: '#96999E',
-    separator: '#E4E5E7',
-    accent: '#339CFF',
-    accentSoft: '#EAF5FF',
+    background: dark ? '#000000' : '#FFFFFF',
+    groupedBackground: dark ? '#000000' : '#F2F2F7',
+    groupedSurface: dark ? '#1C1C1E' : '#FFFFFF',
+    surface: dark ? '#000000' : '#FFFFFF',
+    surfaceElevated: dark ? '#000000' : '#FFFFFF',
+    surfaceMuted: dark ? '#111318' : '#F2F5F8',
+    text: dark ? '#F5F7FA' : '#05070A',
+    secondary: dark ? '#A7AFBA' : '#606A76',
+    tertiary: dark ? '#68727F' : '#98A1AC',
+    separator: dark ? '#2A303A' : '#DCE2E9',
+    accent: '#1D7FF2',
+    accentSoft: dark ? '#0B315D' : '#E8F2FF',
     success: '#34C759',
     danger: '#FF3B30',
     warning: '#FF9500',
@@ -29,4 +26,4 @@ export function makeTheme(_scheme: ColorSchemeName | 'light' | 'dark') {
 }
 
 export const radius = { small: 10, medium: 16, large: 24, pill: 999 };
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 };
+export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };

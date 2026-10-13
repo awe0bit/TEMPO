@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 
@@ -21,11 +21,11 @@ export default function App(props: RuntimeProps) {
   const { snapshot, route, theme, error, clearError } = tempo;
 
   return (
-    <View style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       {snapshot ? <RouteView tempo={tempo} /> : <View style={styles.loading}><ActivityIndicator color={theme.accent} /></View>}
       {error ? <Pressable accessibilityRole="button" accessibilityLabel="关闭错误提示" onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -1,21 +1,7 @@
-import type { ComponentProps } from 'react';
-import { Host, Image, Picker, Text } from '@expo/ui/swift-ui';
+import { Host, Picker, Text } from '@expo/ui/swift-ui';
 import { frame, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 
 type TimerDirection = 'countdown' | 'countUp';
-export type NativeSymbolName = NonNullable<ComponentProps<typeof Image>['systemName']>;
-
-export function NativeSymbol({ name, color, size = 25 }: {
-  name: NativeSymbolName;
-  color: string;
-  size?: number;
-}) {
-  return (
-    <Host style={{ width: 40, height: 40 }} useViewportSizeMeasurement>
-      <Image systemName={name} size={size} color={color} />
-    </Host>
-  );
-}
 
 export function NativeTimerDirectionControl({ value, onChange }: {
   value: TimerDirection;
