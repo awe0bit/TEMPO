@@ -342,7 +342,14 @@ private struct TempoTabLabel: View {
   let isSelected: Bool
 
   var body: some View {
-    Label(tab.title, systemImage: tab.symbol)
-      .symbolVariant(isSelected ? .fill : .none)
+    Label {
+      Text(tab.title)
+        .fontWeight(isSelected ? .semibold : .regular)
+    } icon: {
+      Image(systemName: tab.symbol)
+        .symbolVariant(isSelected ? .fill : .none)
+        .scaleEffect(isSelected ? 1.06 : 1)
+    }
+    .animation(.snappy(duration: 0.22, extraBounce: 0.03), value: isSelected)
   }
 }
