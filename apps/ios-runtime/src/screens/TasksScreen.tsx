@@ -110,7 +110,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
-        <View style={[styles.listPanel, { backgroundColor: theme.surface }]}>
+        <View style={styles.listPanel}>
           <FlatList
             data={shown}
             keyExtractor={(item) => item.id}
@@ -134,7 +134,7 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
                 onReschedule={(date) => perform('task.update', { id: item.id, scheduledAt: date })}
               />
             )}
-            contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
+            contentContainerStyle={shown.length ? [styles.listContent, { backgroundColor: theme.surface }] : styles.emptyContent}
           />
         </View>
 
@@ -285,8 +285,8 @@ const styles = StyleSheet.create({
   calendarHandleTouch: { height: 28, alignItems: 'center', justifyContent: 'center' },
   calendarHandleButton: { width: 104, height: 28, alignItems: 'center', justifyContent: 'center' },
   calendarHandle: { width: 38, height: 4, borderRadius: 2, opacity: .46 },
-  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 16, marginBottom: 12, borderRadius: 24, overflow: 'hidden' },
-  listContent: { paddingBottom: 104 },
+  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 16, marginBottom: 78 },
+  listContent: { borderRadius: 24, overflow: 'hidden' },
   emptyContent: { flexGrow: 1 },
   groupHeader: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
   groupTitle: { flex: 1, fontSize: 18, fontWeight: '600', letterSpacing: -.2 },
