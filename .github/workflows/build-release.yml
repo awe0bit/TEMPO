@@ -635,14 +635,24 @@ jobs:
             echo "No release files were downloaded." >&2
             exit 1
           fi
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "${release_files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$RELEASE_TAG" "${release_files[@]}" \
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # Create the release first, then upload with --clobber. Passing every
+            # asset to `gh release create` can leave a partial draft when one
+            # upload is retried and GitHub reports that the asset already exists.
+            gh release create "$RELEASE_TAG" \
+              --draft \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --generate-notes \
               --title "TEMPO $RELEASE_TAG"
+          fi
+
+          gh release upload "$RELEASE_TAG" "${release_files[@]}" \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
+
+          if [[ "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" == "true" ]]; then
+            gh release edit "$RELEASE_TAG" --draft=false --repo "$GITHUB_REPOSITORY"
           fi
   version-writeback:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
