@@ -12,6 +12,7 @@ on:
       - ".github/workflows/build-release.yml"
       - ".github/workflows/ios-native-release.yml"
       - ".github/workflows/ios-ota.yml"
+      - ".github/workflows/ios-ota-recovery.yml"
   pull_request:
   workflow_dispatch:
 
