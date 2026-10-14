@@ -90,6 +90,11 @@ jobs:
             echo 'Do not recreate the Brownfield root while switching tabs.' >&2
             exit 1
           fi
+          if grep -Fq 'TabView(selection:' apps/apple/iOS/TempoApp.swift; then
+            echo 'Do not place the persistent runtime behind an opaque TabView content controller.' >&2
+            exit 1
+          fi
+          grep -Fq 'TempoNativeTabBar(' apps/apple/iOS/TempoApp.swift
           grep -Fq 'sendCommand(' apps/apple/iOS/TempoRuntimeHost.swift
           grep -Fq '"navigate"' apps/apple/iOS/TempoRuntimeHost.swift
           grep -Fq 'tempoRuntimeReady' apps/apple/iOS/TempoRuntimeHost.swift

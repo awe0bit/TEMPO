@@ -53,41 +53,35 @@ private struct iOSRootView: View {
   @AppStorage(TempoPreferenceKey.moduleOrder) private var moduleOrder = TempoModuleOrder.defaultValue
 
   var body: some View {
-    ZStack {
-      TempoPalette.background.ignoresSafeArea()
+    GeometryReader { geometry in
+      ZStack {
+        TempoPalette.background.ignoresSafeArea()
 
-      // Keep exactly one Brownfield root alive for the lifetime of the app.
-      // The native tab bar changes its route through the bridge instead of
-      // tearing down and bootstrapping a new React Native root on every tap.
-      TempoRuntimeScreen(route: selection)
+        // A single permanent Brownfield host and a standalone native UITabBar
+        // share the screen without an opaque UITabBarController content layer.
+        VStack(spacing: 0) {
+          TempoRuntimeScreen(route: selection)
 
-      TabView(selection: $selection) {
-        ForEach(visibleTabs) { tab in
-          Color.clear
-            .allowsHitTesting(false)
-            .tabItem {
-              TempoTabLabel(tab: tab, isSelected: selection == tab)
-            }
-            .tag(tab)
+          TempoNativeTabBar(
+            selection: $selection,
+            visibleTabs: visibleTabs
+          ) {
+            developerToolsDetent = .medium
+            showingDeveloperTools = true
+          }
+          .frame(height: 49 + geometry.safeAreaInsets.bottom)
+          .disabled(showingLaunchExperience)
         }
-      }
-      .tint(TempoPalette.accent)
-      .disabled(showingLaunchExperience)
-      .background {
-        TempoTabBarBridge(selection: selection, visibleTabs: visibleTabs) {
-          developerToolsDetent = .medium
-          showingDeveloperTools = true
-        }
-        .frame(width: 0, height: 0)
-      }
+        .ignoresSafeArea(edges: .bottom)
 
-      if showingLaunchExperience {
-        TempoLaunchExperience {
-          showingLaunchExperience = false
-          Task { await TempoPermissionGate.shared.markAppReady() }
-          checkForUpdates()
+        if showingLaunchExperience {
+          TempoLaunchExperience {
+            showingLaunchExperience = false
+            Task { await TempoPermissionGate.shared.markAppReady() }
+            checkForUpdates()
+          }
+          .zIndex(10)
         }
-        .zIndex(10)
       }
     }
     .onChange(of: selection) { _ in
@@ -180,78 +174,62 @@ private struct iOSRootView: View {
   }
 }
 
-private struct TempoTabBarBridge: UIViewControllerRepresentable {
-  let selection: AppTab
+private struct TempoNativeTabBar: UIViewRepresentable {
+  @Binding var selection: AppTab
   let visibleTabs: [AppTab]
   let onReveal: () -> Void
 
-  func makeCoordinator() -> Coordinator { Coordinator(onReveal: onReveal) }
-
-  func makeUIViewController(context: Context) -> Controller {
-    let controller = Controller()
-    controller.onResolveTabBar = { [weak coordinator = context.coordinator] tabBar in
-      coordinator?.install(on: tabBar)
-    }
-    return controller
+  func makeCoordinator() -> Coordinator {
+    Coordinator(selection: $selection, visibleTabs: visibleTabs, onReveal: onReveal)
   }
 
-  func updateUIViewController(_ controller: Controller, context: Context) {
+  func makeUIView(context: Context) -> UITabBar {
+    let tabBar = UITabBar(frame: .zero)
+    tabBar.delegate = context.coordinator
+    tabBar.tintColor = .tempoTabAccent
+    tabBar.unselectedItemTintColor = .secondaryLabel
+    context.coordinator.installGestures(on: tabBar)
+    return tabBar
+  }
+
+  func updateUIView(_ tabBar: UITabBar, context: Context) {
+    context.coordinator.selection = $selection
     context.coordinator.onReveal = onReveal
-    context.coordinator.selection = selection
     context.coordinator.visibleTabs = visibleTabs
-    controller.resolveTabBarWhenReady()
-  }
-
-  final class Controller: UIViewController {
-    var onResolveTabBar: ((UITabBar) -> Void)?
-
-    override func loadView() {
-      view = UIView(frame: .zero)
-      view.isUserInteractionEnabled = false
-      view.backgroundColor = .clear
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-      super.viewDidAppear(animated)
-      resolveTabBarWhenReady()
-    }
-
-    func resolveTabBarWhenReady() {
-      DispatchQueue.main.async { [weak self] in
-        guard let self, let tabBar = tabBarController?.tabBar
-          ?? view.window?.rootViewController?.findDeveloperToolsTabBarController()?.tabBar
-        else { return }
-        onResolveTabBar?(tabBar)
+    let titles = tabBar.items?.compactMap(\.title) ?? []
+    if titles != visibleTabs.map(\.title) {
+      tabBar.items = visibleTabs.enumerated().map { index, tab in
+        let image = UIImage(systemName: tab.symbol)
+        let selectedImage = UIImage(systemName: "\(tab.symbol).fill") ?? image
+        let item = UITabBarItem(title: tab.title, image: image, selectedImage: selectedImage)
+        item.tag = index
+        return item
       }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-        guard let self, let tabBar = tabBarController?.tabBar
-          ?? view.window?.rootViewController?.findDeveloperToolsTabBarController()?.tabBar
-        else { return }
-        onResolveTabBar?(tabBar)
+    }
+    if let index = visibleTabs.firstIndex(of: selection),
+       let items = tabBar.items,
+       items.indices.contains(index) {
+      tabBar.selectedItem = items[index]
+    }
+    DispatchQueue.main.async { [weak coordinator = context.coordinator, weak tabBar] in
+      if let tabBar {
+        coordinator?.updateItemScale(in: tabBar, animated: false)
       }
     }
   }
 
-  final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+  final class Coordinator: NSObject, UITabBarDelegate, UIGestureRecognizerDelegate {
+    var selection: Binding<AppTab>
     var onReveal: () -> Void
-    var selection: AppTab
     var visibleTabs: [AppTab]
-    private weak var installedTabBar: UITabBar?
-    private weak var tapRecognizer: UITapGestureRecognizer?
-    private weak var longPressRecognizer: UILongPressGestureRecognizer?
 
-    init(onReveal: @escaping () -> Void) {
+    init(selection: Binding<AppTab>, visibleTabs: [AppTab], onReveal: @escaping () -> Void) {
+      self.selection = selection
+      self.visibleTabs = visibleTabs
       self.onReveal = onReveal
-      selection = .today
-      visibleTabs = AppTab.allCases
     }
 
-    func install(on tabBar: UITabBar) {
-      guard installedTabBar !== tabBar else {
-        return
-      }
-      uninstall()
-
+    func installGestures(on tabBar: UITabBar) {
       let tap = UITapGestureRecognizer(target: self, action: #selector(handleFourTaps(_:)))
       tap.numberOfTapsRequired = 4
       tap.cancelsTouchesInView = false
@@ -264,23 +242,53 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
 
       tabBar.addGestureRecognizer(tap)
       tabBar.addGestureRecognizer(longPress)
-      installedTabBar = tabBar
-      tapRecognizer = tap
-      longPressRecognizer = longPress
     }
 
-    private func uninstall() {
-      if let tapRecognizer { installedTabBar?.removeGestureRecognizer(tapRecognizer) }
-      if let longPressRecognizer { installedTabBar?.removeGestureRecognizer(longPressRecognizer) }
+    func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+      guard visibleTabs.indices.contains(item.tag) else { return }
+      selection.wrappedValue = visibleTabs[item.tag]
+      updateItemScale(in: tabBar, animated: true)
+    }
+
+    func updateItemScale(in tabBar: UITabBar, animated: Bool) {
+      guard let selectedIndex = visibleTabs.firstIndex(of: selection.wrappedValue) else { return }
+      let controls = tabBar.subviews
+        .compactMap { $0 as? UIControl }
+        .sorted { $0.frame.minX < $1.frame.minX }
+      let changes = {
+        for (index, control) in controls.enumerated() {
+          control.transform = index == selectedIndex
+            ? CGAffineTransform(scaleX: 1.06, y: 1.06)
+            : .identity
+        }
+      }
+      if animated {
+        UIView.animate(
+          withDuration: 0.22,
+          delay: 0,
+          usingSpringWithDamping: 0.82,
+          initialSpringVelocity: 0.2,
+          options: [.allowUserInteraction, .beginFromCurrentState],
+          animations: changes
+        )
+      } else {
+        changes()
+      }
     }
 
     @objc private func handleFourTaps(_ recognizer: UITapGestureRecognizer) {
-      guard recognizer.state == .ended, isSettingsItem(at: recognizer.location(in: recognizer.view)) else { return }
+      guard recognizer.state == .ended,
+            let tabBar = recognizer.view as? UITabBar,
+            isSettingsItem(at: recognizer.location(in: tabBar), in: tabBar)
+      else { return }
       reveal()
     }
 
     @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-      guard recognizer.state == .began, isSettingsItem(at: recognizer.location(in: recognizer.view)) else { return }
+      guard recognizer.state == .began,
+            let tabBar = recognizer.view as? UITabBar,
+            isSettingsItem(at: recognizer.location(in: tabBar), in: tabBar)
+      else { return }
       reveal()
     }
 
@@ -289,8 +297,8 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
       onReveal()
     }
 
-    private func isSettingsItem(at point: CGPoint) -> Bool {
-      guard let tabBar = installedTabBar,
+    private func isSettingsItem(at point: CGPoint, in tabBar: UITabBar) -> Bool {
+      guard
             let items = tabBar.items,
             !items.isEmpty,
             tabBar.bounds.width > 0 else { return false }
@@ -307,20 +315,6 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
       shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool { true }
 
-    deinit { uninstall() }
-  }
-}
-
-private extension UIViewController {
-  func findDeveloperToolsTabBarController() -> UITabBarController? {
-    if let tabController = self as? UITabBarController { return tabController }
-    for child in children {
-      if let tabController = child.findDeveloperToolsTabBarController() { return tabController }
-    }
-    if let presentedViewController {
-      return presentedViewController.findDeveloperToolsTabBarController()
-    }
-    return nil
   }
 }
 
@@ -329,22 +323,5 @@ private extension UIColor {
     traits.userInterfaceStyle == .dark
       ? UIColor(red: 0x33 / 255, green: 0x9C / 255, blue: 1.00, alpha: 1)
       : UIColor(red: 0x33 / 255, green: 0x9C / 255, blue: 1.00, alpha: 1)
-  }
-}
-
-private struct TempoTabLabel: View {
-  let tab: AppTab
-  let isSelected: Bool
-
-  var body: some View {
-    Label {
-      Text(tab.title)
-        .fontWeight(isSelected ? .semibold : .regular)
-    } icon: {
-      Image(systemName: tab.symbol)
-        .symbolVariant(isSelected ? .fill : .none)
-        .scaleEffect(isSelected ? 1.06 : 1)
-    }
-    .animation(.snappy(duration: 0.22, extraBounce: 0.03), value: isSelected)
   }
 }
