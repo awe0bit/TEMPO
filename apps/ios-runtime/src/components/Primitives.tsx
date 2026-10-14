@@ -14,7 +14,13 @@ export function Screen({ children, theme, scroll = false, backgroundColor }: Pro
   );
 }
 
-export function NativeChromeGap() { return <View style={styles.chromeGap} />; }
+export function NativeChromeGap({ title, theme }: { title?: string; theme?: TempoTheme } = {}) {
+  return (
+    <View style={styles.chromeGap}>
+      {title && theme ? <Text style={[styles.chromeTitle, { color: theme.text }]}>{title}</Text> : null}
+    </View>
+  );
+}
 
 export function Section({ children, theme, title }: PropsWithChildren<{ theme: TempoTheme; title?: string }>) {
   return (
@@ -108,7 +114,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   screenContent: { flex: 1 },
   scrollContent: { paddingBottom: 44 },
-  chromeGap: { height: 56 },
+  chromeGap: { height: 56, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 82 },
+  chromeTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -.2, textAlign: 'center' },
   sectionWrap: { marginHorizontal: 20, marginBottom: 16 },
   sectionLabel: { fontSize: 14, lineHeight: 19, fontWeight: '500', marginBottom: 7, marginLeft: 12 },
   section: { borderRadius: 22, overflow: 'hidden' },

@@ -56,9 +56,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
     .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed') || a.createdAt.localeCompare(b.createdAt)),
   [scoped, showCompleted, query]);
 
-  const completedCount = scoped.filter((task) => task.status === 'completed').length;
-  const openCount = scoped.length - completedCount;
-
   function openComposer(task?: TempoTask) {
     setEditing(task);
     setDraftTitle(task?.title ?? '');
@@ -98,22 +95,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   return (
     <Screen theme={theme}>
       <View style={styles.flex}>
-        <NativeChromeGap />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={route === 'today' ? (calendarExpanded ? '收起日历' : '展开日历') : '记到收集箱'}
-          onPress={() => route === 'today' ? setCalendarExpanded(!calendarExpanded) : openComposer()}
-          style={({ pressed }) => [styles.heading, pressed && styles.headingPressed]}
-        >
-          <View style={styles.headingText}>
-            <Text style={[styles.title, { color: theme.text }]}>{route === 'today' ? '今天' : '收集箱'}</Text>
-            <Text numberOfLines={1} style={[styles.subtitle, { color: theme.secondary }]}>
-              {route === 'today' ? `${greeting()} · ${fullDate(selectedDate)}` : openCount ? `${openCount} 项待整理` : '随手记下，稍后安排'}
-              {completedCount ? ` · ${completedCount} 项已完成` : ''}
-            </Text>
-          </View>
-          <Text style={[styles.headingAction, { color: theme.accent }]}>{route === 'today' ? (calendarExpanded ? '⌃' : '⌄') : '＋'}</Text>
-        </Pressable>
+        <NativeChromeGap title={route === 'today' ? '今天' : '收集箱'} theme={theme} />
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
@@ -267,18 +249,11 @@ function sameDay(value: string | Date | null | undefined, compare: Date) { if (!
 function addDays(date: Date, count: number) { const result = new Date(date); result.setDate(result.getDate() + count); return result; }
 function startOfWeek(date: Date) { return addDays(date, -((date.getDay() + 6) % 7)); }
 function dayTitle(date: Date) { const today = new Date(); if (sameDay(date, today)) return '今天'; if (sameDay(date, addDays(today, -1))) return '昨天'; if (sameDay(date, addDays(today, 1))) return '明天'; return `${date.getMonth() + 1}月${date.getDate()}日`; }
-function greeting() { const hour = new Date().getHours(); return hour < 12 ? '早上好' : hour < 18 ? '下午好' : '晚上好'; }
 function fullDate(date: Date) { const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']; return `${date.getMonth() + 1}月${date.getDate()}日  ${weekdays[date.getDay()]}`; }
 function shortDate(value: string) { const date = new Date(value); return `${date.getMonth() + 1}/${date.getDate()}`; }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  heading: { minHeight: 58, paddingHorizontal: 24, paddingTop: 2, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
-  headingPressed: { opacity: .58 },
-  headingText: { flex: 1, minWidth: 0 },
-  title: { fontSize: 24, lineHeight: 29, fontWeight: '700', letterSpacing: -.5 },
-  subtitle: { fontSize: 13.5, lineHeight: 18, marginTop: 1 },
-  headingAction: { width: 38, textAlign: 'right', fontSize: 25, lineHeight: 30, fontWeight: '400' },
   calendar: { overflow: 'hidden', marginHorizontal: 20, paddingHorizontal: 12, borderRadius: 22 },
   weekdayRow: { height: 24, flexDirection: 'row', alignItems: 'center' },
   weekday: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '500' },
@@ -290,7 +265,7 @@ const styles = StyleSheet.create({
   calendarHandleTouch: { height: 22, alignItems: 'center', justifyContent: 'center' },
   calendarHandleButton: { width: 104, height: 22, alignItems: 'center', justifyContent: 'center' },
   calendarHandle: { width: 34, height: 4, borderRadius: 2, opacity: .38 },
-  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 10, marginBottom: 78 },
+  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 8, marginBottom: 78 },
   listContent: { borderRadius: 24, overflow: 'hidden' },
   emptyContent: { flexGrow: 1 },
   groupHeader: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
