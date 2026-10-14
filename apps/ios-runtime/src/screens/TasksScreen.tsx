@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   taskDate: { fontSize: 12, fontWeight: '500', marginLeft: 10 },
   rowChevron: { fontSize: 23, fontWeight: '300', marginLeft: 8 },
   rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 53, right: 0, bottom: 0 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingHorizontal: 26, paddingTop: 92 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26, paddingBottom: 34 },
   emptyIcon: { fontSize: 38, lineHeight: 44, fontWeight: '200' },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 10 },
   emptyBody: { fontSize: 14, marginTop: 5 },

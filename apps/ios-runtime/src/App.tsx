@@ -32,7 +32,7 @@ function RouteView({ tempo }: { tempo: ReturnType<typeof useTempo> }) {
   if (route === 'inbox' || route === 'today') return <TasksScreen route={route} theme={theme} tasks={snapshot.tasks} command={command} consumeCommand={consumeCommand} perform={perform} />;
   if (route === 'focus') return <FocusScreen theme={theme} pomodoro={snapshot.pomodoro} remaining={snapshot.displayedRemainingSeconds} command={command} consumeCommand={consumeCommand} perform={perform} />;
   if (route === 'rss') return <RSSScreen theme={theme} articles={snapshot.rss?.articles ?? []} subscriptions={snapshot.rss?.subscriptions ?? []} folders={snapshot.rss?.folders ?? []} phase={snapshot.rss?.phase ?? 'idle'} command={command} consumeCommand={consumeCommand} perform={perform} />;
-  return <SettingsScreen theme={theme} snapshot={snapshot} perform={perform} />;
+  return <SettingsScreen theme={theme} snapshot={snapshot} command={command} consumeCommand={consumeCommand} perform={perform} />;
 }
 
 const styles = StyleSheet.create({

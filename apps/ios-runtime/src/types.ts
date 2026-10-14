@@ -140,7 +140,8 @@ export type TempoCommand = {
     | 'stopTimer'
     | 'addFeed'
     | 'refreshFeeds'
-    | 'markAllRead';
+    | 'markAllRead'
+    | 'openDeveloperTools';
   query?: string;
   route?: TempoRoute;
 };
