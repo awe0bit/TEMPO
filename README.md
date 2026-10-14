@@ -48,7 +48,7 @@
 
 下载后可使用同一 Release 中的 `SHA256SUMS.txt` 校验文件完整性。安装包、校验和与构建来源证明均由 GitHub Actions 自动生成。
 
-未改动的平台不会为了对齐版本号重复构建。发布完成后，仓库内四端的版本元数据会统一回写；各客户端检查更新时会选择最近一个包含本平台安装包的数字版本 Release。
+各平台独立更新，因此最新 Release 不一定同时包含四个平台。请下载名称中带有当前平台的文件；应用内“设置 → 软件更新”也会自动找到适合当前平台的最新版。
 
 ### 关于 iOS 自签
 
@@ -60,7 +60,7 @@ iOS 的灵动岛与小组件位于 `TEMPOWidgets.appex`。签名工具必须同�
 App Group：group.one.darker.qingxu
 ```
 
-仅重签主应用、删除扩展或丢失 App Group 权限，都会导致应用可以打开但灵动岛和小组件不可用。App Store 上架不是使用这些能力的必要条件；正确的扩展打包、签名和权限才是关键。详见 [iOS 私密云端签名](docs/IOS_PRIVATE_SIGNING.md)。
+仅重签主应用、删除扩展或丢失 App Group 权限，都会导致应用可以打开但灵动岛和小组件不可用。App Store 上架不是使用这些能力的必要条件；正确的扩展打包、签名和权限才是关键。详见 [iOS 本机签名](docs/IOS_PRIVATE_SIGNING.md)。
 
 ## 快速部署同步服务
 
@@ -175,9 +175,9 @@ go test ./...
 go vet ./...
 ```
 
-## 自动发布
+## 获取更新
 
-推送到 `main` 后会自动检查、构建四端客户端和同步服务，并在全部必要任务通过后发布新版本。构建过程与结果以 [GitHub Actions](https://github.com/FelixZoe/TEMPO/actions) 为准，不在用户文档重复展示内部版本迁移和流水线实现。
+在应用中打开“设置 → 软件更新”即可检查当前平台的新版本。iOS 中与现有运行时兼容的页面内容会自动 OTA 更新，不需要手动下载安装；涉及原生导航、权限、小组件或灵动岛的更新仍需安装新版 IPA。其他平台按系统提示下载并覆盖安装即可。
 
 ## 文档
 
@@ -186,7 +186,7 @@ go vet ./...
 - [系统架构](docs/ARCHITECTURE.md)
 - [同步协议 v1](docs/SYNC_PROTOCOL.md)
 - [自托管部署](docs/DEPLOYMENT.md)
-- [iOS 私密云端签名](docs/IOS_PRIVATE_SIGNING.md)
+- [iOS 本机签名](docs/IOS_PRIVATE_SIGNING.md)
 - [Apple 客户端开发](apps/apple/README.md)
 - [Flutter 客户端开发](apps/flutter/README.md)
 - [同步服务开发](services/sync/README.md)

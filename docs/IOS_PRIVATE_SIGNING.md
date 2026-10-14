@@ -67,6 +67,6 @@ codesign -d --entitlements :- tempo-ipa-check/Payload/TEMPO.app/PlugIns/TEMPOWid
 
 ## 签名材料安全
 
-- 不要把 `.p12`、密码、描述文件或解密后的签名 IPA提交到仓库。
+- 不要把 `.p12`、密码、描述文件或解密后的签名 IPA 提交到仓库。
 - 不要把签名材料上传到 GitHub Actions Secrets；本项目没有云端私钥签名流程。
 - 证书疑似泄漏时，应在 Apple Developer 后台撤销并重新生成，而不是只删除聊天或仓库文件。

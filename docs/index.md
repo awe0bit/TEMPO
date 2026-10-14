@@ -1,6 +1,6 @@
 # Tempo开发与部署文档
 
-这里是Tempo的正式技术文档，覆盖客户端开发、自托管同步、私有 iOS 签名、跨端设计规范和同步协议。Tempo面向个人使用：数据默认保存在本机，也可以连接你自己的服务器完成实时同步。
+这里是 Tempo 的正式技术文档，说明应用能做什么、如何配置各项功能、如何部署自己的同步服务，以及如何在不同平台安装和使用。Tempo 面向个人使用：数据默认保存在本机，也可以连接你自己的服务器完成实时同步。
 
 ## 从这里开始
 
@@ -9,7 +9,7 @@
 | 部署自己的同步服务 | [自托管部署](/DEPLOYMENT) |
 | 配置 iPhone、Android、Mac 与 Windows | [完整配置指南](/CONFIGURATION) |
 | 配置 AI、天气与 RSS | [功能配置](/CONFIGURATION#功能配置索引) |
-| 构建并签名 iOS IPA | [iOS 私有签名](/IOS_PRIVATE_SIGNING) |
+| 在本机签名 iOS IPA | [iOS 本机签名](/IOS_PRIVATE_SIGNING) |
 | 了解客户端与服务端结构 | [系统架构](/ARCHITECTURE) |
 | 开发同步能力 | [同步协议](/SYNC_PROTOCOL) |
 | 保持四端视觉一致 | [设计规范](/DESIGN) |

@@ -91,7 +91,7 @@ xcodebuild \
 App Group：group.one.darker.qingxu
 ```
 
-`TempoiOS` 依赖并嵌入 `TempoWidgets`。真机签名时必须为两个 target 选择同一 Team，并让两份描述文件都授权 App Group。详细检查与私密云端构建见 [iOS 签名文档](../../docs/IOS_PRIVATE_SIGNING.md)。
+`TempoiOS` 依赖并嵌入 `TempoWidgets`。真机签名时必须为两个 target 选择同一 Team，并让两份描述文件都授权 App Group。本项目不在云端读取个人私钥，详细步骤见 [iOS 本机签名文档](../../docs/IOS_PRIVATE_SIGNING.md)。
 
 工程通过 Swift Package Manager 嵌入 `TempoRuntimePackage-release`。最低系统版本以 `project.yml` 为准（当前 iOS 17.0、macOS 15.0），GitHub Actions 使用稳定 Xcode 环境构建。
 
@@ -113,7 +113,7 @@ App Group：group.one.darker.qingxu
 
 ## 发布
 
-公开 `build-release.yml` 工作流会生成：
+公开版本提供：
 
 - 包含扩展但未签名的 iOS IPA。
 - 未签名、未公证的 macOS ZIP 与 DMG。

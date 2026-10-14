@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: Platform to build; auto uses the latest commit paths
+        description: 构建平台；auto 根据最近一次提交的路径自动选择
         required: true
         default: auto
         type: choice

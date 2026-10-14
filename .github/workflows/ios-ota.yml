@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Publish the current runtime or recover a broken runtime
+        description: normal 发布当前内容；recovery 向指定运行时回退已知可用内容
         required: true
         default: normal
         type: choice
@@ -19,7 +19,7 @@ on:
           - normal
           - recovery
       channel:
-        description: EAS Update channel
+        description: EAS Update 发布通道
         required: true
         default: preview
         type: choice
@@ -27,12 +27,12 @@ on:
           - preview
           - production
       source_ref:
-        description: Known-good tag or commit (recovery mode only)
+        description: 已知可用的标签或提交（仅 recovery）
         required: false
         default: v0.5.9
         type: string
       runtime_version:
-        description: Broken native runtime version (recovery mode only)
+        description: 需要恢复的原生运行时版本（仅 recovery）
         required: false
         default: 0.6.0
         type: string
