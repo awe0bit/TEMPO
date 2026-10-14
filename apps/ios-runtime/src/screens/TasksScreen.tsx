@@ -8,12 +8,12 @@ import type { TempoTheme } from '../theme';
 import type { TempoCommand, TempoTask } from '../types';
 
 type Props = {
-  route: 'inbox' | 'today'; theme: TempoTheme; tasks: TempoTask[]; quote?: string;
+  route: 'inbox' | 'today'; theme: TempoTheme; tasks: TempoTask[];
   command?: TempoCommand; consumeCommand: () => void;
   perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
 };
 
-export function TasksScreen({ route, theme, tasks, quote, command, consumeCommand, perform }: Props) {
+export function TasksScreen({ route, theme, tasks, command, consumeCommand, perform }: Props) {
   const [composerVisible, setComposerVisible] = useState(false);
   const [editing, setEditing] = useState<TempoTask>();
   const [draftTitle, setDraftTitle] = useState('');
@@ -99,14 +99,21 @@ export function TasksScreen({ route, theme, tasks, quote, command, consumeComman
     <Screen theme={theme}>
       <View style={styles.flex}>
         <NativeChromeGap />
-        <View style={styles.heading}>
-          <Text style={[styles.title, { color: theme.text }]}>{route === 'today' ? greeting() : '收集箱'}</Text>
-          <Text style={[styles.subtitle, { color: theme.secondary }]}>
-            {route === 'today' ? fullDate(selectedDate) : openCount ? `${openCount} 项待整理` : '随手记下，稍后安排'}
-            {completedCount ? ` · ${completedCount} 项已完成` : ''}
-          </Text>
-          {route === 'inbox' && quote ? <Text numberOfLines={2} style={[styles.ambientQuote, { color: theme.secondary }]}>“{quote}”</Text> : null}
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={route === 'today' ? (calendarExpanded ? '收起日历' : '展开日历') : '记到收集箱'}
+          onPress={() => route === 'today' ? setCalendarExpanded(!calendarExpanded) : openComposer()}
+          style={({ pressed }) => [styles.heading, pressed && styles.headingPressed]}
+        >
+          <View style={styles.headingText}>
+            <Text style={[styles.title, { color: theme.text }]}>{route === 'today' ? '今天' : '收集箱'}</Text>
+            <Text numberOfLines={1} style={[styles.subtitle, { color: theme.secondary }]}>
+              {route === 'today' ? `${greeting()} · ${fullDate(selectedDate)}` : openCount ? `${openCount} 项待整理` : '随手记下，稍后安排'}
+              {completedCount ? ` · ${completedCount} 项已完成` : ''}
+            </Text>
+          </View>
+          <Text style={[styles.headingAction, { color: theme.accent }]}>{route === 'today' ? (calendarExpanded ? '⌃' : '⌄') : '＋'}</Text>
+        </Pressable>
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
@@ -266,10 +273,12 @@ function shortDate(value: string) { const date = new Date(value); return `${date
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  heading: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
-  title: { fontSize: 30, lineHeight: 37, fontWeight: '700', letterSpacing: -.75 },
-  subtitle: { fontSize: 15, lineHeight: 20, marginTop: 5 },
-  ambientQuote: { fontSize: 14, lineHeight: 20, marginTop: 10, paddingRight: 24 },
+  heading: { minHeight: 58, paddingHorizontal: 24, paddingTop: 2, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
+  headingPressed: { opacity: .58 },
+  headingText: { flex: 1, minWidth: 0 },
+  title: { fontSize: 24, lineHeight: 29, fontWeight: '700', letterSpacing: -.5 },
+  subtitle: { fontSize: 13.5, lineHeight: 18, marginTop: 1 },
+  headingAction: { width: 38, textAlign: 'right', fontSize: 25, lineHeight: 30, fontWeight: '400' },
   calendar: { overflow: 'hidden', marginHorizontal: 20, paddingHorizontal: 12, borderRadius: 22 },
   weekdayRow: { height: 24, flexDirection: 'row', alignItems: 'center' },
   weekday: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '500' },
@@ -281,7 +290,7 @@ const styles = StyleSheet.create({
   calendarHandleTouch: { height: 22, alignItems: 'center', justifyContent: 'center' },
   calendarHandleButton: { width: 104, height: 22, alignItems: 'center', justifyContent: 'center' },
   calendarHandle: { width: 34, height: 4, borderRadius: 2, opacity: .38 },
-  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 14, marginBottom: 78 },
+  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 10, marginBottom: 78 },
   listContent: { borderRadius: 24, overflow: 'hidden' },
   emptyContent: { flexGrow: 1 },
   groupHeader: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
