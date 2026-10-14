@@ -143,5 +143,6 @@ export type TempoCommand = {
     | 'markAllRead'
     | 'openDeveloperTools';
   query?: string;
+  active?: boolean;
   route?: TempoRoute;
 };

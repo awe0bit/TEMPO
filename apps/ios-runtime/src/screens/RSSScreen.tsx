@@ -10,9 +10,12 @@ export function RSSScreen({ theme, articles, subscriptions, folders, phase, comm
   theme: TempoTheme; articles: RSSArticle[]; subscriptions: RSSSubscription[]; folders: RSSFolder[]; phase: string;
   command?: TempoCommand; consumeCommand: () => void; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
 }) {
-  const [query, setQuery] = useState(''); const [feed, setFeed] = useState<string>(); const [article, setArticle] = useState<RSSArticle>(); const [adding, setAdding] = useState(false); const [url, setURL] = useState('');
+  const [query, setQuery] = useState(''); const [searchActive, setSearchActive] = useState(false); const [feed, setFeed] = useState<string>(); const [article, setArticle] = useState<RSSArticle>(); const [adding, setAdding] = useState(false); const [url, setURL] = useState('');
   useEffect(() => {
-    if (command?.type === 'search') setQuery(command.query ?? '');
+    if (command?.type === 'search') {
+      setQuery(command.query ?? '');
+      setSearchActive(command.active ?? false);
+    }
     if (command?.type === 'addFeed') setAdding(true);
     if (command?.type === 'refreshFeeds') void perform('rss.refresh');
     if (command?.type === 'markAllRead') void perform('rss.markAllRead', feed ? { feedID: feed } : undefined);
@@ -21,7 +24,7 @@ export function RSSScreen({ theme, articles, subscriptions, folders, phase, comm
   const shown = useMemo(() => articles.filter((item) => !feed || item.feedID === feed).filter((item) => `${item.title} ${item.feedTitle} ${item.summary}`.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => (b.publishedAt ?? b.fetchedAt).localeCompare(a.publishedAt ?? a.fetchedAt)), [articles, feed, query]);
   const unreadCount = articles.filter((item) => !item.isRead).length;
   return <Screen theme={theme}>
-    <NativeChromeGap title="RSS" theme={theme} />
+    <NativeChromeGap title={searchActive ? undefined : 'RSS'} theme={theme} />
     <FlatList
       style={styles.articleList}
       data={shown}

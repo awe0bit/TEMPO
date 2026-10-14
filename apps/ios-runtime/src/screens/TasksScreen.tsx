@@ -19,6 +19,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [draftTitle, setDraftTitle] = useState('');
   const [draftNotes, setDraftNotes] = useState('');
   const [query, setQuery] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [undo, setUndo] = useState<TempoTask>();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -26,7 +27,10 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const calendar = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (command?.type === 'search') setQuery(command.query ?? '');
+    if (command?.type === 'search') {
+      setQuery(command.query ?? '');
+      setSearchActive(command.active ?? false);
+    }
     if (command?.type === 'newTask') openComposer();
     if (command?.type === 'showCompleted') setShowCompleted(true);
     if (command?.type === 'hideCompleted') setShowCompleted(false);
@@ -95,7 +99,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   return (
     <Screen theme={theme}>
       <View style={styles.flex}>
-        <NativeChromeGap title={route === 'today' ? '今天' : '收集箱'} theme={theme} />
+        <NativeChromeGap title={searchActive ? undefined : route === 'today' ? '今天' : '收集箱'} theme={theme} />
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
