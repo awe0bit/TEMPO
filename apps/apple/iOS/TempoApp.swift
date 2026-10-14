@@ -48,8 +48,6 @@ private struct iOSRootView: View {
   @State private var selection = AppTab.today
   @State private var showingLaunchExperience = true
   @State private var availableUpdate: TempoRelease?
-  @State private var showingDeveloperTools = false
-  @State private var developerToolsDetent: PresentationDetent = .medium
   @AppStorage(TempoPreferenceKey.moduleOrder) private var moduleOrder = TempoModuleOrder.defaultValue
 
   var body: some View {
@@ -66,8 +64,7 @@ private struct iOSRootView: View {
             selection: $selection,
             visibleTabs: visibleTabs
           ) {
-            developerToolsDetent = .medium
-            showingDeveloperTools = true
+            openDeveloperTools()
           }
           .frame(height: 49 + geometry.safeAreaInsets.bottom)
           .disabled(showingLaunchExperience)
@@ -122,17 +119,8 @@ private struct iOSRootView: View {
         secondaryButton: .cancel(Text("稍后"))
       )
     }
-    .sheet(isPresented: $showingDeveloperTools) {
-      DeveloperToolsView(selectedDetent: $developerToolsDetent)
-        .environmentObject(store)
-        .environmentObject(updateChecker)
-        .presentationDetents([.medium, .large], selection: $developerToolsDetent)
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(30)
-    }
     .onReceive(NotificationCenter.default.publisher(for: .tempoOpenDeveloperTools)) { _ in
-      developerToolsDetent = .medium
-      showingDeveloperTools = true
+      openDeveloperTools()
     }
     .onAppear {
       TempoNativeRegistry.shared.connect(
@@ -156,6 +144,13 @@ private struct iOSRootView: View {
     switch rawValue {
     case "pomodoro": selection = .pomodoro
     default: selection = .today
+    }
+  }
+
+  private func openDeveloperTools() {
+    selection = .settings
+    DispatchQueue.main.async {
+      TempoNativeRegistry.shared.sendCommand("openDeveloperTools")
     }
   }
 
