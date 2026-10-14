@@ -124,7 +124,9 @@ private struct TempoRuntimeChrome: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .onChange(of: route) { _, _ in
-      closeSearch()
+      if searchExpanded || !searchText.isEmpty {
+        closeSearch()
+      }
     }
   }
 
@@ -156,7 +158,7 @@ private struct TempoRuntimeChrome: View {
         .opacity(searchExpanded ? 1 : 0)
         .frame(width: searchExpanded ? searchExpandedWidth - 96 : 0, alignment: .leading)
         .onChange(of: searchText) { _, value in
-          TempoNativeRegistry.shared.sendCommand("search", payload: ["query": value])
+          TempoNativeRegistry.shared.sendCommand("search", payload: ["query": value, "active": searchExpanded])
         }
 
       Button(action: closeSearch) {
@@ -193,7 +195,7 @@ private struct TempoRuntimeChrome: View {
     withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
       searchExpanded = true
     }
-    TempoNativeRegistry.shared.sendCommand("search", payload: ["query": searchText])
+    TempoNativeRegistry.shared.sendCommand("search", payload: ["query": searchText, "active": true])
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
       guard searchExpanded else { return }
       searchFocused = true
@@ -203,11 +205,11 @@ private struct TempoRuntimeChrome: View {
 
   private func closeSearch() {
     searchFocused = false
-    searchText = ""
-    TempoNativeRegistry.shared.sendCommand("search", payload: ["query": ""])
     withAnimation(.smooth(duration: 0.24, extraBounce: 0)) {
       searchExpanded = false
     }
+    searchText = ""
+    TempoNativeRegistry.shared.sendCommand("search", payload: ["query": "", "active": false])
   }
 
   private func chromeButton(_ symbol: String, command: String) -> some View {
@@ -231,13 +233,11 @@ private struct TempoRuntimeChrome: View {
       switch route {
       case .inbox:
         commandButton("记到收集箱", symbol: "square.and.pencil", command: "newTask")
-        searchCommandButton("搜索任务")
         Divider()
         commandButton("显示已完成", symbol: "checkmark.circle", command: "showCompleted")
         commandButton("隐藏已完成", symbol: "circle", command: "hideCompleted")
       case .today:
         commandButton("安排任务", symbol: "calendar.badge.plus", command: "newTask")
-        searchCommandButton("搜索任务")
         commandButton("回到今天", symbol: "calendar", command: "returnToday")
         Divider()
         commandButton("显示已完成", symbol: "checkmark.circle", command: "showCompleted")
@@ -253,7 +253,6 @@ private struct TempoRuntimeChrome: View {
       case .rss:
         commandButton("添加订阅", symbol: "plus.circle", command: "addFeed")
         commandButton("刷新全部", symbol: "arrow.clockwise", command: "refreshFeeds")
-        searchCommandButton("搜索文章")
         Divider()
         commandButton("全部标为已读", symbol: "checkmark.circle", command: "markAllRead")
       case .settings:
@@ -276,12 +275,6 @@ private struct TempoRuntimeChrome: View {
       send(command)
     } label: {
       Label(title, systemImage: symbol)
-    }
-  }
-
-  private func searchCommandButton(_ title: String) -> some View {
-    Button(action: openSearch) {
-      Label(title, systemImage: "magnifyingglass")
     }
   }
 
