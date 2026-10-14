@@ -118,7 +118,7 @@ App Group：group.one.darker.qingxu
 - 包含扩展但未签名的 iOS IPA。
 - 未签名、未公证的 macOS ZIP 与 DMG。
 
-`Private Signed iOS` 手动工作流用于导入个人签名材料并生成加密私有产物。证书和描述文件不得提交到本目录。
+个人签名只在本机 Xcode 中完成。证书和描述文件不得提交到本目录，也不由 GitHub Actions 读取。
 
 ## 修改检查
 

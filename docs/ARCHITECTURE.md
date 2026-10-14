@@ -122,6 +122,6 @@ flowchart LR
 
 公开版本只使用 `x.y.z` 数字格式。一次发布只编译受影响的平台，其他平台不重复构建；客户端从 Release 列表中选择最近一个包含本平台资产的版本。TypeScript OTA 不改变安装包版本号。
 
-公开工作流生成未签名 iOS IPA。包含个人证书的签名构建由独立的 `Private Signed iOS` 手动工作流完成，产物加密且不进入公开 Release。
+公开工作流只生成未签名 iOS IPA；个人证书不进入 GitHub Actions，真机包在本机 Xcode 中签名和导出。
 
 文档站与客户端发布分别由独立工作流处理，互不阻塞。工作流实现保留在仓库的 `.github/workflows` 中，不在用户文档展示内部发布细节。

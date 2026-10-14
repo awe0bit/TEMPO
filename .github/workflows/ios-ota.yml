@@ -10,6 +10,14 @@ on:
       - "apps/ios-runtime/metro.config.js"
   workflow_dispatch:
     inputs:
+      mode:
+        description: Publish the current runtime or recover a broken runtime
+        required: true
+        default: normal
+        type: choice
+        options:
+          - normal
+          - recovery
       channel:
         description: EAS Update channel
         required: true
@@ -18,16 +26,27 @@ on:
         options:
           - preview
           - production
+      source_ref:
+        description: Known-good tag or commit (recovery mode only)
+        required: false
+        default: v0.5.9
+        type: string
+      runtime_version:
+        description: Broken native runtime version (recovery mode only)
+        required: false
+        default: 0.6.0
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: tempo-ios-ota-${{ github.ref }}
-  cancel-in-progress: true
+  group: tempo-ios-ota-${{ github.ref }}-${{ inputs.mode || 'normal' }}-${{ inputs.runtime_version || 'current' }}
+  cancel-in-progress: ${{ inputs.mode != 'recovery' }}
 
 jobs:
   validate-runtime:
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'normal'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,6 +77,7 @@ jobs:
       - run: npm run export:ios
 
   publish-update:
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'normal'
     needs: validate-runtime
     runs-on: ubuntu-latest
     defaults:
@@ -93,3 +113,43 @@ jobs:
       - name: Explain unpublished validation
         if: env.EXPO_TOKEN == ''
         run: echo "OTA export validated. Add EXPO_TOKEN to publish updates."
+
+  publish-known-good-update:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'recovery'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ios-runtime
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      RUNTIME_VERSION: ${{ inputs.runtime_version }}
+      CHANNEL: ${{ inputs.channel }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/ios-runtime/package-lock.json
+      - name: Validate recovery target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RUNTIME_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test -n "$EXPO_TOKEN"
+          printf '%s\n' "$RUNTIME_VERSION" > runtime-version.txt
+          echo "TEMPO_APP_VERSION=$RUNTIME_VERSION" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run export:ios
+      - name: Publish known-good update
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@latest update \
+            --channel "$CHANNEL" \
+            --platform ios \
+            --message "recovery-${{ inputs.source_ref }}-for-runtime-${RUNTIME_VERSION}" \
+            --non-interactive

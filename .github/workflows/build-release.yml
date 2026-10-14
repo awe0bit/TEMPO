@@ -776,7 +776,8 @@ jobs:
             --repo "$GITHUB_REPOSITORY"
   version-writeback:
     if: >-
-      needs.version.outputs.should_release == 'true' &&
+      always() &&
+      needs.github-release.result == 'success' &&
       ((github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch')
     needs: [version, github-release]
     runs-on: ubuntu-latest

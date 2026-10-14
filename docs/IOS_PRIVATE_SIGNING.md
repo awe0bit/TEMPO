@@ -1,6 +1,6 @@
-# iOS 签名、扩展与私密云端构建
+# iOS 本机签名与扩展
 
-公开 Release 提供包含 Widget/Live Activity 扩展的未签名 IPA。要在真机安装，必须使用自己的 Apple 身份重新签名；若希望由 GitHub Actions 完成签名，可使用仓库中的 `Private Signed iOS` 手动工作流。
+公开 Release 提供包含 Widget/Live Activity 扩展的未签名 IPA。要在真机安装，必须在本机使用自己的 Apple 身份签名。仓库不会在 GitHub Actions 中读取、保存或使用个人签名私钥。
 
 返回：[文档首页](/) · [自托管部署](/DEPLOYMENT)
 
@@ -27,7 +27,7 @@
 
 这些能力不要求应用已经上架 App Store。决定是否可用的是设备系统版本、扩展打包、签名身份和 entitlements。
 
-## 方案一：本机 Apple ID 签名
+## 本机 Apple ID 签名
 
 适合个人设备调试：
 
@@ -37,60 +37,6 @@
 4. 选择真机运行，或 Archive 后导出适合自己账号的安装包。
 
 免费个人 Team、付费开发者账号和不同自签工具的权限能力并不完全相同。若工具无法同时创建扩展 App ID 和 App Group，应改用支持这些权限的开发者账号/描述文件，而不是删除扩展。
-
-## 方案二：GitHub 私密云端签名
-
-`Private Signed iOS` 工作流会：
-
-1. 从 GitHub Environment Secrets 导入证书和两份描述文件。
-2. 校验 Team、两个 App ID 和 App Group。
-3. 同时 Archive 并验证主应用与 Widget 扩展。
-4. 生成签名 IPA。
-5. 使用 AES-256 和文件名加密生成 `.7z`，只上传加密包。
-
-签名 IPA不会进入公开 Release。加密 Artifact 保留 1 天。
-
-### 配置 GitHub Environment
-
-在仓库 `Settings → Environments` 中创建 `ios-signing`，添加以下 Secrets：
-
-| Secret | 内容 |
-| --- | --- |
-| `IOS_CERTIFICATE_P12_BASE64` | 与描述文件匹配的代码签名证书 `.p12` 的 Base64 |
-| `IOS_CERTIFICATE_PASSWORD` | `.p12` 密码 |
-| `IOS_MAIN_PROFILE_BASE64` | 主应用 `.mobileprovision` 的 Base64 |
-| `IOS_WIDGET_PROFILE_BASE64` | 扩展 `.mobileprovision` 的 Base64 |
-| `IOS_SIGNED_ARCHIVE_PASSWORD` | 至少 16 位的私密压缩包密码 |
-
-PowerShell 写入二进制 Secrets：
-
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('主应用.mobileprovision')) |
-  gh secret set IOS_MAIN_PROFILE_BASE64 --env ios-signing --repo FelixZoe/TEMPO
-
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('扩展.mobileprovision')) |
-  gh secret set IOS_WIDGET_PROFILE_BASE64 --env ios-signing --repo FelixZoe/TEMPO
-
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('证书.p12')) |
-  gh secret set IOS_CERTIFICATE_P12_BASE64 --env ios-signing --repo FelixZoe/TEMPO
-```
-
-密码使用交互输入，避免出现在命令历史：
-
-```powershell
-gh secret set IOS_CERTIFICATE_PASSWORD --env ios-signing --repo FelixZoe/TEMPO
-gh secret set IOS_SIGNED_ARCHIVE_PASSWORD --env ios-signing --repo FelixZoe/TEMPO
-```
-
-### 运行与下载
-
-1. 打开仓库 `Actions → Private Signed iOS`。
-2. 点击 `Run workflow`；版本号留空时读取当前项目版本。
-3. 构建成功后下载 `tempo-ios-signed-encrypted` Artifact。
-4. 使用 `IOS_SIGNED_ARCHIVE_PASSWORD` 解压 `.7z`。
-5. 安装解压得到的签名 IPA。
-
-工作流校验不通过时不会退化生成“能安装但没有扩展”的包，而是直接失败并在日志中指出不匹配项。
 
 ## 覆盖安装与更新
 
@@ -119,9 +65,8 @@ codesign -d --entitlements :- tempo-ipa-check/Payload/TEMPO.app/PlugIns/TEMPOWid
 
 如果应用内显示“App Group 签名未授权”，含义是源码虽然声明了该组，但当前安装包的描述文件或重签过程没有保留这项 entitlement。此时主应用仍可能正常打开，但任务小组件、锁屏组件和灵动岛无法读取主应用写入的实时数据。修复点在签名材料和重签流程，不是把代码中的 App Group 改名。
 
-## 密钥安全
+## 签名材料安全
 
 - 不要把 `.p12`、密码、描述文件或解密后的签名 IPA提交到仓库。
-- GitHub 会在日志中屏蔽 Secret，但拥有仓库写权限的人可以修改工作流引用 Secrets；不要授予不可信账号写权限。
-- 为 `ios-signing` Environment 配置审批规则，可以避免工作流被未经确认地读取签名材料。
+- 不要把签名材料上传到 GitHub Actions Secrets；本项目没有云端私钥签名流程。
 - 证书疑似泄漏时，应在 Apple Developer 后台撤销并重新生成，而不是只删除聊天或仓库文件。
