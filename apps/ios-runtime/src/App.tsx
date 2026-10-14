@@ -1,7 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Updates from 'expo-updates';
 
 import { useTempo } from './hooks/useTempo';
 import { FocusScreen } from './screens/FocusScreen';
@@ -16,7 +14,6 @@ type RuntimeProps = {
 };
 
 export default function App(props: RuntimeProps) {
-  useAutomaticRuntimeUpdates();
   const tempo = useTempo(props.route);
   const { snapshot, route, theme, error, clearError } = tempo;
 
@@ -27,43 +24,6 @@ export default function App(props: RuntimeProps) {
       {error ? <Pressable accessibilityRole="button" accessibilityLabel="关闭错误提示" onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
     </View>
   );
-}
-
-function useAutomaticRuntimeUpdates() {
-  const checking = useRef(false);
-  const lastCheckAt = useRef(0);
-
-  useEffect(() => {
-    if (__DEV__ || !Updates.isEnabled) return undefined;
-
-    const checkAndApply = async () => {
-      const now = Date.now();
-      if (checking.current || now - lastCheckAt.current < 15 * 60 * 1000) return;
-      checking.current = true;
-      lastCheckAt.current = now;
-      try {
-        const available = await Updates.checkForUpdateAsync();
-        if (!available.isAvailable && !available.isRollBackToEmbedded) return;
-        const downloaded = await Updates.fetchUpdateAsync();
-        if (downloaded.isNew || downloaded.isRollBackToEmbedded) {
-          await Updates.reloadAsync();
-        }
-      } catch {
-        // Offline or disabled update services must never block the local-first app.
-      } finally {
-        checking.current = false;
-      }
-    };
-
-    const startup = setTimeout(() => { void checkAndApply(); }, 1200);
-    const foreground = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void checkAndApply();
-    });
-    return () => {
-      clearTimeout(startup);
-      foreground.remove();
-    };
-  }, []);
 }
 
 function RouteView({ tempo }: { tempo: ReturnType<typeof useTempo> }) {

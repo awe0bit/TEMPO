@@ -41,6 +41,14 @@ jobs:
           cache-dependency-path: apps/ios-runtime/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - name: Guard automatic update lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'Updates\.(reloadAsync|checkForUpdateAsync|fetchUpdateAsync)' src; then
+            echo 'Do not reload Expo Updates from React roots. The native ON_LOAD lifecycle owns automatic OTA adoption.' >&2
+            exit 1
+          fi
       - name: Resolve native runtime version
         shell: bash
         run: |
