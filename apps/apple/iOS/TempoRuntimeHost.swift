@@ -14,6 +14,9 @@ final class TempoRuntimeAppDelegate: NSObject, UIApplicationDelegate {
 
 struct TempoRuntimeScreen: View {
   let route: AppTab
+  @State private var runtimeReady = false
+  @State private var startupTimedOut = false
+  @State private var runtimeGeneration = UUID()
 
   var body: some View {
     ZStack(alignment: .top) {
@@ -24,10 +27,55 @@ struct TempoRuntimeScreen: View {
           "locale": Locale.current.identifier,
         ]
       )
+      .id(runtimeGeneration)
       .ignoresSafeArea(edges: .bottom)
 
       TempoRuntimeChrome(route: route)
+
+      if !runtimeReady {
+        runtimePlaceholder
+      }
     }
+    .task(id: runtimeGeneration) {
+      runtimeReady = false
+      startupTimedOut = false
+      try? await Task.sleep(for: .seconds(8))
+      guard !Task.isCancelled, !runtimeReady else { return }
+      startupTimedOut = true
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .tempoRuntimeReady)) { _ in
+      runtimeReady = true
+      startupTimedOut = false
+    }
+  }
+
+  private var runtimePlaceholder: some View {
+    VStack(spacing: 14) {
+      if startupTimedOut {
+        Image(systemName: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90")
+          .font(.system(size: 28, weight: .medium))
+          .foregroundStyle(TempoPalette.accent)
+        Text("界面运行时没有连接")
+          .font(.system(size: 18, weight: .semibold))
+          .foregroundStyle(TempoPalette.ink)
+        Text("已保留原生导航，可重新加载当前页面。")
+          .font(.system(size: 14))
+          .foregroundStyle(TempoPalette.quiet)
+        Button("重新加载") {
+          runtimeGeneration = UUID()
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(TempoPalette.accent)
+      } else {
+        ProgressView()
+          .tint(TempoPalette.accent)
+        Text("正在载入")
+          .font(.system(size: 14, weight: .medium))
+          .foregroundStyle(TempoPalette.quiet)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(TempoPalette.background)
   }
 }
 

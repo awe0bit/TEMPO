@@ -67,6 +67,10 @@ function request<T>(message: Record<string, unknown>): Promise<T> {
 export const tempoNative = {
   isEmbedded: Platform.OS === 'ios',
 
+  notifyReady() {
+    Brownfield.sendMessage({ type: 'tempo.ready' });
+  },
+
   bootstrap(): Promise<TempoSnapshot> {
     return request<TempoSnapshot>({ type: 'tempo.bootstrap' });
   },

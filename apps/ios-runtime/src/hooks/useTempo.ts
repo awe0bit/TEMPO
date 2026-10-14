@@ -13,10 +13,15 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
 
   useEffect(() => {
     let active = true;
-    tempoNative.bootstrap().then((value) => active && setSnapshot(value)).catch((reason) => {
+    const acceptSnapshot = (value: TempoSnapshot) => {
+      if (!active) return;
+      setSnapshot(value);
+      tempoNative.notifyReady();
+    };
+    tempoNative.bootstrap().then(acceptSnapshot).catch((reason) => {
       if (active) setError(messageOf(reason));
     });
-    const offState = tempoNative.subscribe((value) => active && setSnapshot(value));
+    const offState = tempoNative.subscribe(acceptSnapshot);
     const offCommand = tempoNative.subscribeCommands((value) => active && setCommand(value));
     return () => {
       active = false;

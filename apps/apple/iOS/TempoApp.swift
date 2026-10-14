@@ -31,7 +31,6 @@ struct TempoApp: App {
         .environmentObject(store)
         .environmentObject(rssStore)
         .environmentObject(updateChecker)
-        .preferredColorScheme(.light)
     }
     .backgroundTask(.appRefresh(RSSBackgroundRefresh.identifier)) {
       await rssStore.refresh()
@@ -59,7 +58,13 @@ private struct iOSRootView: View {
 
       TabView(selection: $selection) {
         ForEach(visibleTabs) { tab in
-          tabContent(tab)
+          Group {
+            if selection == tab {
+              tabContent(tab)
+            } else {
+              TempoPalette.background
+            }
+          }
             .tabItem {
               TempoTabLabel(tab: tab, isSelected: selection == tab)
             }
@@ -252,9 +257,6 @@ private struct TempoTabBarBridge: UIViewControllerRepresentable {
       }
       uninstall()
 
-      tabBar.window?.backgroundColor = .tempoCanvas
-      tabBar.superview?.backgroundColor = .tempoCanvas
-
       let tap = UITapGestureRecognizer(target: self, action: #selector(handleFourTaps(_:)))
       tap.numberOfTapsRequired = 4
       tap.cancelsTouchesInView = false
@@ -328,8 +330,6 @@ private extension UIViewController {
 }
 
 private extension UIColor {
-  static let tempoCanvas = UIColor(red: 0xF3 / 255, green: 0xF4 / 255, blue: 0xF5 / 255, alpha: 1)
-
   static let tempoTabAccent = UIColor { traits in
     traits.userInterfaceStyle == .dark
       ? UIColor(red: 0x33 / 255, green: 0x9C / 255, blue: 1.00, alpha: 1)

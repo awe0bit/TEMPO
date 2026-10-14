@@ -5,6 +5,7 @@ import UIKit
 
 extension Notification.Name {
   static let tempoOpenDeveloperTools = Notification.Name("tempo.open-developer-tools")
+  static let tempoRuntimeReady = Notification.Name("tempo.runtime-ready")
 }
 
 @MainActor
@@ -331,9 +332,12 @@ final class TempoNativeRegistry {
   }
 
   private func handleMessage(_ message: [String: Any?]) async {
-    guard let type = message["type"] as? String,
-          let requestID = message["requestId"] as? String
-    else { return }
+    guard let type = message["type"] as? String else { return }
+    if type == "tempo.ready" {
+      NotificationCenter.default.post(name: .tempoRuntimeReady, object: nil)
+      return
+    }
+    guard let requestID = message["requestId"] as? String else { return }
 
     do {
       let result: Any
