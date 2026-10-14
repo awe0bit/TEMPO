@@ -4,17 +4,21 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore:
-      - "apps/ios-runtime/**"
-      - "apps/apple/iOS/**"
-      - "apps/apple/Configuration/TempoiOS.entitlements"
-      - "apps/apple/Configuration/TempoWidgets.entitlements"
-      - ".github/workflows/build-release.yml"
-      - ".github/workflows/ios-native-release.yml"
-      - ".github/workflows/ios-ota.yml"
-      - ".github/workflows/ios-ota-recovery.yml"
   pull_request:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build; auto uses the latest commit paths
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - ios
+          - android
+          - windows
+          - macos
+          - all
 
 permissions:
   contents: read
@@ -31,6 +35,12 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       build_number: ${{ steps.resolve.outputs.build_number }}
       should_release: ${{ steps.resolve.outputs.should_release }}
+      publish_server: ${{ steps.resolve.outputs.publish_server }}
+      build_ios: ${{ steps.resolve.outputs.build_ios }}
+      build_android: ${{ steps.resolve.outputs.build_android }}
+      build_windows: ${{ steps.resolve.outputs.build_windows }}
+      build_macos: ${{ steps.resolve.outputs.build_macos }}
+      build_server: ${{ steps.resolve.outputs.build_server }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,6 +48,10 @@ jobs:
       - name: Resolve build version
         id: resolve
         shell: bash
+        env:
+          REQUESTED_PLATFORM: ${{ inputs.platform || 'auto' }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
 
@@ -47,53 +61,123 @@ jobs:
             exit 1
           fi
 
+          build_ios=false
+          build_android=false
+          build_windows=false
+          build_macos=false
+          build_server=false
+
+          mark_all_clients() {
+            build_ios=true
+            build_android=true
+            build_windows=true
+            build_macos=true
+          }
+
+          requested="${REQUESTED_PLATFORM:-auto}"
+          if [[ "$GITHUB_REF" == refs/tags/v* || "$requested" == "all" ]]; then
+            mark_all_clients
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$requested" != "auto" ]]; then
+            case "$requested" in
+              ios) build_ios=true ;;
+              android) build_android=true ;;
+              windows) build_windows=true ;;
+              macos) build_macos=true ;;
+              *) echo "Unknown platform: $requested" >&2; exit 1 ;;
+            esac
+          else
+            if [[ "$GITHUB_EVENT_NAME" == "pull_request" && -n "${PR_BASE_SHA:-}" ]]; then
+              base="$PR_BASE_SHA"
+            elif [[ "$GITHUB_EVENT_NAME" == "push" && -n "${BEFORE_SHA:-}" && ! "$BEFORE_SHA" =~ ^0+$ ]]; then
+              base="$BEFORE_SHA"
+            elif git rev-parse "${GITHUB_SHA}^" >/dev/null 2>&1; then
+              base="${GITHUB_SHA}^"
+            else
+              base="$GITHUB_SHA"
+            fi
+
+            while IFS= read -r path; do
+              case "$path" in
+                apps/apple/Shared/*)
+                  build_ios=true; build_macos=true ;;
+                apps/apple/iOS/*|apps/apple/Configuration/TempoiOS.entitlements|apps/apple/Configuration/TempoWidgets.entitlements)
+                  build_ios=true ;;
+                apps/apple/macOS/*|apps/apple/macOSWidgets/*|apps/apple/Configuration/TempomacOS.entitlements|apps/apple/Configuration/TempomacOSWidgets.entitlements)
+                  build_macos=true ;;
+                apps/apple/project.yml)
+                  build_ios=true; build_macos=true ;;
+                apps/ios-runtime/package.json|apps/ios-runtime/package-lock.json|apps/ios-runtime/app.config.js|apps/ios-runtime/runtime-version.txt|apps/ios-runtime/scripts/*|apps/ios-runtime/babel.config.js|apps/ios-runtime/metro.config.js)
+                  build_ios=true ;;
+                apps/android/*)
+                  build_android=true ;;
+                apps/flutter/*|scripts/windows/*)
+                  build_windows=true ;;
+                services/sync/*)
+                  build_server=true ;;
+                assets/*|scripts/generate_brand_assets.py)
+                  mark_all_clients ;;
+              esac
+            done < <(git diff --name-only "$base" "$GITHUB_SHA")
+          fi
+
+          client_changed=false
+          if [[ "$build_ios" == true || "$build_android" == true || "$build_windows" == true || "$build_macos" == true ]]; then
+            client_changed=true
+          fi
+
           should_release=false
+          publish_server=false
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF_NAME#v}"
-            should_release=true
-          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-            existing_tag="$(git tag --points-at "$GITHUB_SHA" --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
-            if [[ -n "$existing_tag" ]]; then
-              version="${existing_tag#v}"
+            should_release="$client_changed"
+          elif [[ ( "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ) || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$build_server" == true ]]; then publish_server=true; fi
+            if [[ "$client_changed" != true ]]; then
+              version="$current"
             else
-              latest_tag="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
-              if [[ -z "$latest_tag" ]]; then
-                version="$current"
+              existing_tag="$(git tag --points-at "$GITHUB_SHA" --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+              if [[ -n "$existing_tag" ]]; then
+                version="${existing_tag#v}"
               else
-                latest="${latest_tag#v}"
-                newest="$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n 1)"
-                if [[ "$newest" == "$current" && "$current" != "$latest" ]]; then
-                  # A manually prepared source version is already the next release.
+                latest_tag="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+                if [[ -z "$latest_tag" ]]; then
                   version="$current"
                 else
-                  IFS=. read -r major minor patch <<< "$latest"
-                  # TEMPO uses one digit per segment. Legacy versions such as
-                  # 0.1.61 migrate to the next minor release instead of becoming
-                  # visually insignificant four- or five-digit patch streams.
-                  if (( patch >= 10 )); then
-                    minor=$((minor + 1))
-                    patch=0
-                  elif (( minor >= 10 )); then
-                    major=$((major + 1))
-                    minor=0
-                    patch=0
+                  latest="${latest_tag#v}"
+                  newest="$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n 1)"
+                  if [[ "$newest" == "$current" && "$current" != "$latest" ]]; then
+                    # A manually prepared source version is already the next release.
+                    version="$current"
                   else
-                    patch=$((patch + 1))
+                    IFS=. read -r major minor patch <<< "$latest"
+                    # TEMPO uses one digit per segment. Legacy versions such as
+                    # 0.1.61 migrate to the next minor release instead of becoming
+                    # visually insignificant four- or five-digit patch streams.
                     if (( patch >= 10 )); then
-                      patch=0
                       minor=$((minor + 1))
+                      patch=0
+                    elif (( minor >= 10 )); then
+                      major=$((major + 1))
+                      minor=0
+                      patch=0
+                    else
+                      patch=$((patch + 1))
+                      if (( patch >= 10 )); then
+                        patch=0
+                        minor=$((minor + 1))
+                      fi
                     fi
-                  fi
 
-                  if (( minor >= 10 )); then
-                    major=$((major + 1))
-                    minor=0
+                    if (( minor >= 10 )); then
+                      major=$((major + 1))
+                      minor=0
+                    fi
+                    version="$major.$minor.$patch"
                   fi
-                  version="$major.$minor.$patch"
                 fi
               fi
             fi
-            should_release=true
+            should_release="$client_changed"
           else
             version="$current"
           fi
@@ -114,10 +198,17 @@ jobs:
             echo "tag=v$version"
             echo "build_number=$GITHUB_RUN_NUMBER"
             echo "should_release=$should_release"
+            echo "publish_server=$publish_server"
+            echo "build_ios=$build_ios"
+            echo "build_android=$build_android"
+            echo "build_windows=$build_windows"
+            echo "build_macos=$build_macos"
+            echo "build_server=$build_server"
           } >> "$GITHUB_OUTPUT"
-          echo "Building TEMPO v$version ($GITHUB_RUN_NUMBER)"
+          echo "TEMPO v$version ($GITHUB_RUN_NUMBER): ios=$build_ios android=$build_android windows=$build_windows macos=$build_macos server=$build_server release=$should_release"
 
   flutter-checks:
+    if: needs.version.outputs.build_windows == 'true'
     needs: version
     runs-on: ubuntu-latest
     defaults:
@@ -134,6 +225,8 @@ jobs:
       - run: flutter test
 
   sync-server:
+    if: needs.version.outputs.build_server == 'true'
+    needs: version
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -152,8 +245,11 @@ jobs:
         run: docker build --tag tempo-sync:test .
 
   docker-publish:
-    if: needs.version.outputs.should_release == 'true'
-    needs: [version, sync-server, flutter-checks, flutter-windows, apple-ios, flutter-android, apple-macos]
+    if: >-
+      always() &&
+      needs.version.outputs.publish_server == 'true' &&
+      needs.sync-server.result == 'success'
+    needs: [version, sync-server]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -181,7 +277,11 @@ jobs:
             org.opencontainers.image.version=${{ needs.version.outputs.version }}
 
   flutter-windows:
-    needs: version
+    if: >-
+      always() &&
+      needs.version.outputs.build_windows == 'true' &&
+      needs.flutter-checks.result == 'success'
+    needs: [version, flutter-checks]
     runs-on: windows-latest
     defaults:
       run:
@@ -313,6 +413,7 @@ jobs:
             artifacts/TEMPO-${{ needs.version.outputs.version }}-Windows-Setup.exe
 
   apple-runtime:
+    if: needs.version.outputs.build_ios == 'true' || needs.version.outputs.build_macos == 'true'
     needs: version
     runs-on: macos-26
     defaults:
@@ -347,6 +448,10 @@ jobs:
           retention-days: 1
 
   apple-ios:
+    if: >-
+      always() &&
+      needs.version.outputs.build_ios == 'true' &&
+      needs.apple-runtime.result == 'success'
     needs: [version, apple-runtime]
     runs-on: macos-26
     defaults:
@@ -410,6 +515,7 @@ jobs:
           path: apps/apple/TEMPO-${{ needs.version.outputs.version }}-iOS-unsigned.ipa
 
   flutter-android:
+    if: needs.version.outputs.build_android == 'true'
     needs: version
     runs-on: ubuntu-latest
     defaults:
@@ -472,7 +578,12 @@ jobs:
           set -euo pipefail
           full="TEMPO-${APP_VERSION}-Android.apk"
           full_sha="$(sha256sum "$full" | cut -d' ' -f1)"
-          previous_tag="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          previous_tag="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=50" --jq '
+            [.[]
+              | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
+              | select(any(.assets[]?; .name == "tempo-android-update.json"))
+            ][0].tag_name // empty
+          ')"
           previous_version="${previous_tag#v}"
           patch_name=""
           if [[ -n "$previous_tag" && "$previous_tag" != "v${APP_VERSION}" ]]; then
@@ -536,6 +647,10 @@ jobs:
             apps/android/tempo-android-update.json
 
   apple-macos:
+    if: >-
+      always() &&
+      needs.version.outputs.build_macos == 'true' &&
+      needs.apple-runtime.result == 'success'
     needs: [version, apple-runtime]
     runs-on: macos-26
     defaults:
@@ -591,14 +706,11 @@ jobs:
     if: >-
       always() &&
       needs.version.outputs.should_release == 'true' &&
-      needs.flutter-checks.result == 'success' &&
-      needs.flutter-windows.result == 'success' &&
-      needs.apple-ios.result == 'success' &&
-      needs.flutter-android.result == 'success' &&
-      needs.apple-macos.result == 'success' &&
-      needs.sync-server.result == 'success' &&
-      needs.docker-publish.result == 'success'
-    needs: [version, flutter-checks, flutter-windows, apple-ios, flutter-android, apple-macos, sync-server, docker-publish]
+      (needs.flutter-windows.result == 'success' || needs.flutter-windows.result == 'skipped') &&
+      (needs.apple-ios.result == 'success' || needs.apple-ios.result == 'skipped') &&
+      (needs.flutter-android.result == 'success' || needs.flutter-android.result == 'skipped') &&
+      (needs.apple-macos.result == 'success' || needs.apple-macos.result == 'skipped')
+    needs: [version, flutter-windows, apple-ios, flutter-android, apple-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -657,11 +769,15 @@ jobs:
             --clobber \
             --repo "$GITHUB_REPOSITORY"
 
-          if [[ "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" == "true" ]]; then
-            gh release edit "$RELEASE_TAG" --draft=false --repo "$GITHUB_REPOSITORY"
-          fi
+          gh release edit "$RELEASE_TAG" \
+            --draft=false \
+            --prerelease=false \
+            --latest \
+            --repo "$GITHUB_REPOSITORY"
   version-writeback:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      needs.version.outputs.should_release == 'true' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch')
     needs: [version, github-release]
     runs-on: ubuntu-latest
     permissions:

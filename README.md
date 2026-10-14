@@ -37,7 +37,7 @@
 
 ## 平台与下载
 
-所有公开安装包都位于 [GitHub Releases](https://github.com/FelixZoe/TEMPO/releases/latest)。
+所有公开安装包都位于 [GitHub Releases](https://github.com/awe0bit/TEMPO/releases)。版本号统一使用纯数字 `x.y.z`；每次只构建实际发生变化的平台，因此某个 Release 只包含本次更新的平台安装包。
 
 | 平台 | 实现 | Release 文件 | 说明 |
 | --- | --- | --- | --- |
@@ -47,6 +47,8 @@
 | Windows | Flutter | `TEMPO-<版本>-Windows-Portable.zip`、`Windows-Setup.exe` | 提供便携版和安装版；未签名时可能出现 SmartScreen 提示 |
 
 下载后可使用同一 Release 中的 `SHA256SUMS.txt` 校验文件完整性。安装包、校验和与构建来源证明均由 GitHub Actions 自动生成。
+
+未改动的平台不会为了对齐版本号重复构建。发布完成后，仓库内四端的版本元数据会统一回写；各客户端检查更新时会选择最近一个包含本平台安装包的数字版本 Release。
 
 ### 关于 iOS 自签
 

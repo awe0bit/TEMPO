@@ -103,23 +103,24 @@ Docker 默认以非 root 用户运行，根文件系统只读，移除 Linux cap
 
 ```mermaid
 flowchart LR
-  PUSH[推送 main] --> TEST[Flutter / Go 检查]
+  PUSH[推送 main] --> PATH[识别受影响平台]
   PUSH --> OTA[iOS OTA 内容验证]
-  TEST --> IOS[iOS 构建]
-  TEST --> MAC[macOS 构建]
-  TEST --> AND[Android 构建]
-  TEST --> WIN[Windows 构建]
-  TEST --> DOCKER[Docker 镜像]
+  PATH -->|iOS 变化| IOS[iOS 构建]
+  PATH -->|macOS 变化| MAC[macOS 构建]
+  PATH -->|Android 变化| AND[Android 构建]
+  PATH -->|Windows 变化| WIN[Windows 构建]
+  PATH -->|服务端变化| DOCKER[Docker 镜像]
   IOS --> RELEASE[GitHub Release]
   MAC --> RELEASE
   AND --> RELEASE
   WIN --> RELEASE
-  DOCKER --> RELEASE
   RELEASE --> SUM[SHA-256 + 来源证明]
-  SUM --> VERSION[版本号回写]
+  SUM --> VERSION[四端版本元数据回写]
   OTA --> PREVIEW[Preview 更新分支]
   PREVIEW --> PRODUCTION[验证后发布 Production]
 ```
+
+公开版本只使用 `x.y.z` 数字格式。一次发布只编译受影响的平台，其他平台不重复构建；客户端从 Release 列表中选择最近一个包含本平台资产的版本。TypeScript OTA 不改变安装包版本号。
 
 公开工作流生成未签名 iOS IPA。包含个人证书的签名构建由独立的 `Private Signed iOS` 手动工作流完成，产物加密且不进入公开 Release。
 

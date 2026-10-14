@@ -33,15 +33,15 @@ class AndroidUpdateService {
   AndroidUpdateService({http.Client? client}) : _client = client ?? http.Client();
 
   static const _channel = MethodChannel('one.darker.qingxu/android_update');
-  static const _latestRelease =
-      'https://api.github.com/repos/FelixZoe/TEMPO/releases/latest';
+  static const _releases =
+      'https://api.github.com/repos/awe0bit/TEMPO/releases?per_page=50';
 
   final http.Client _client;
 
   Future<AndroidUpdateInfo?> check() async {
     final package = await PackageInfo.fromPlatform();
     final response = await _client.get(
-      Uri.parse(_latestRelease),
+      Uri.parse(_releases),
       headers: const {
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
@@ -50,14 +50,25 @@ class AndroidUpdateService {
     if (response.statusCode != 200) {
       throw StateError('检查更新失败（HTTP ${response.statusCode}）');
     }
-    final release = jsonDecode(utf8.decode(response.bodyBytes));
-    if (release is! Map || release['assets'] is! List) {
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! List) {
       throw StateError('Release 信息格式不正确');
     }
-    final assets = (release['assets'] as List).whereType<Map>().toList();
-    final manifestAsset = assets.where(
-      (asset) => asset['name'] == 'tempo-android-update.json',
-    ).firstOrNull;
+    Map? manifestAsset;
+    for (final release in decoded.whereType<Map>()) {
+      final tag = release['tag_name'];
+      final assets = release['assets'];
+      if (tag is! String ||
+          !RegExp(r'^v?\d+\.\d+\.\d+$').hasMatch(tag) ||
+          assets is! List) {
+        continue;
+      }
+      manifestAsset = assets
+          .whereType<Map>()
+          .where((asset) => asset['name'] == 'tempo-android-update.json')
+          .firstOrNull;
+      if (manifestAsset != null) break;
+    }
     if (manifestAsset == null) return null;
     final manifestResponse = await _client.get(
       Uri.parse(manifestAsset['browser_download_url'] as String),

@@ -22,10 +22,28 @@ struct TempoRelease: Decodable, Identifiable, Equatable {
 
   var id: String { tagName }
   var version: String { tagName.trimmingCharacters(in: CharacterSet(charactersIn: "vV")) }
+  var usesNumericVersion: Bool {
+    tagName.range(of: #"^v?[0-9]+\.[0-9]+\.[0-9]+$"#, options: .regularExpression) != nil
+  }
   var iOSAsset: Asset? {
     assets.first {
       $0.name.lowercased().contains("ios") && $0.name.lowercased().hasSuffix(".ipa")
     }
+  }
+  var macOSAsset: Asset? {
+    assets.first {
+      let name = $0.name.lowercased()
+      return name.contains("macos") && (name.hasSuffix(".dmg") || name.hasSuffix(".zip"))
+    }
+  }
+  var currentPlatformAsset: Asset? {
+    #if os(iOS)
+    return iOSAsset
+    #elseif os(macOS)
+    return macOSAsset
+    #else
+    return nil
+    #endif
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -66,7 +84,7 @@ final class AppUpdateChecker: ObservableObject {
     state = .checking
     do {
       var request = URLRequest(
-        url: URL(string: "https://api.github.com/repos/FelixZoe/TEMPO/releases/latest")!
+        url: URL(string: "https://api.github.com/repos/awe0bit/TEMPO/releases?per_page=50")!
       )
       request.timeoutInterval = 15
       request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -76,7 +94,14 @@ final class AppUpdateChecker: ObservableObject {
       guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
         throw UpdateError.invalidResponse
       }
-      let release = try JSONDecoder().decode(TempoRelease.self, from: data)
+      let releases = try JSONDecoder().decode([TempoRelease].self, from: data)
+      guard let release = releases.first(where: {
+        $0.usesNumericVersion && $0.currentPlatformAsset != nil
+      }) else {
+        hasChecked = true
+        state = .current
+        return nil
+      }
       hasChecked = true
       if Self.isNewer(release.version, than: currentVersion) {
         state = .available(release)
