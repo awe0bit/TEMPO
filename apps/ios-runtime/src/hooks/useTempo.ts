@@ -10,6 +10,7 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
   const [snapshot, setSnapshot] = useState<TempoSnapshot>();
   const [command, setCommand] = useState<TempoCommand>();
   const [error, setError] = useState<string>();
+  const [activeRoute, setActiveRoute] = useState<TempoSnapshot['route'] | undefined>(routeOverride);
 
   useEffect(() => {
     let active = true;
@@ -22,7 +23,14 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
       if (active) setError(messageOf(reason));
     });
     const offState = tempoNative.subscribe(acceptSnapshot);
-    const offCommand = tempoNative.subscribeCommands((value) => active && setCommand(value));
+    const offCommand = tempoNative.subscribeCommands((value) => {
+      if (!active) return;
+      if (value.type === 'navigate' && value.route) {
+        setActiveRoute(value.route);
+        return;
+      }
+      setCommand(value);
+    });
     return () => {
       active = false;
       offState();
@@ -48,7 +56,7 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
   }, []);
 
   const consumeCommand = useCallback(() => setCommand(undefined), []);
-  const route = routeOverride ?? snapshot?.route ?? 'today';
+  const route = activeRoute ?? snapshot?.route ?? 'today';
   const theme = useMemo(
     () => makeTheme(snapshot?.colorScheme ?? systemScheme),
     [snapshot?.colorScheme, systemScheme],

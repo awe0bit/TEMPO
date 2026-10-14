@@ -85,7 +85,13 @@ jobs:
             echo 'Do not attach an infinite safe-area background directly to TabView; it collapses the brownfield runtime content on iOS.' >&2
             exit 1
           fi
-          grep -Fq 'if selection == tab' apps/apple/iOS/TempoApp.swift
+          test "$(grep -Fc 'TempoRuntimeScreen(route: selection)' apps/apple/iOS/TempoApp.swift)" -eq 1
+          if grep -Fq 'if selection == tab' apps/apple/iOS/TempoApp.swift; then
+            echo 'Do not recreate the Brownfield root while switching tabs.' >&2
+            exit 1
+          fi
+          grep -Fq 'sendCommand(' apps/apple/iOS/TempoRuntimeHost.swift
+          grep -Fq '"navigate"' apps/apple/iOS/TempoRuntimeHost.swift
           grep -Fq 'tempoRuntimeReady' apps/apple/iOS/TempoRuntimeHost.swift
 
       - name: Build embedded React Native runtime

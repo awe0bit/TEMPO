@@ -56,15 +56,15 @@ private struct iOSRootView: View {
     ZStack {
       TempoPalette.background.ignoresSafeArea()
 
+      // Keep exactly one Brownfield root alive for the lifetime of the app.
+      // The native tab bar changes its route through the bridge instead of
+      // tearing down and bootstrapping a new React Native root on every tap.
+      TempoRuntimeScreen(route: selection)
+
       TabView(selection: $selection) {
         ForEach(visibleTabs) { tab in
-          Group {
-            if selection == tab {
-              tabContent(tab)
-            } else {
-              TempoPalette.background
-            }
-          }
+          Color.clear
+            .allowsHitTesting(false)
             .tabItem {
               TempoTabLabel(tab: tab, isSelected: selection == tab)
             }
@@ -153,11 +153,6 @@ private struct iOSRootView: View {
 
   private var visibleTabs: [AppTab] {
     TempoNavigationPolicy.visibleTabs(order: TempoModuleOrder.decode(moduleOrder))
-  }
-
-  @ViewBuilder
-  private func tabContent(_ tab: AppTab) -> some View {
-    TempoRuntimeScreen(route: tab)
   }
 
   private func consumePendingWidgetDestination() {

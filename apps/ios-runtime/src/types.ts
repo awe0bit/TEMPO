@@ -129,6 +129,7 @@ export type UpdateState = {
 
 export type TempoCommand = {
   type:
+    | 'navigate'
     | 'search'
     | 'statistics'
     | 'newTask'
@@ -141,4 +142,5 @@ export type TempoCommand = {
     | 'refreshFeeds'
     | 'markAllRead';
   query?: string;
+  route?: TempoRoute;
 };

@@ -46,7 +46,18 @@ struct TempoRuntimeScreen: View {
     .onReceive(NotificationCenter.default.publisher(for: .tempoRuntimeReady)) { _ in
       runtimeReady = true
       startupTimedOut = false
+      sendRoute()
     }
+    .onChange(of: route) { _, _ in
+      sendRoute()
+    }
+  }
+
+  private func sendRoute() {
+    TempoNativeRegistry.shared.sendCommand(
+      "navigate",
+      payload: ["route": route.runtimeRoute]
+    )
   }
 
   private var runtimePlaceholder: some View {
