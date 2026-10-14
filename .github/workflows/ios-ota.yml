@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: normal 发布当前内容；recovery 向指定运行时回退已知可用内容
+        description: 发布模式 / Mode；normal 更新，recovery 回退
         required: true
         default: normal
         type: choice
@@ -19,7 +19,7 @@ on:
           - normal
           - recovery
       channel:
-        description: EAS Update 发布通道
+        description: 发布通道 / EAS Update channel
         required: true
         default: preview
         type: choice
@@ -27,12 +27,12 @@ on:
           - preview
           - production
       source_ref:
-        description: 已知可用的标签或提交（仅 recovery）
+        description: 可用标签或提交 / Known-good ref（recovery）
         required: false
         default: v0.5.9
         type: string
       runtime_version:
-        description: 需要恢复的原生运行时版本（仅 recovery）
+        description: 目标运行时 / Target runtime（recovery）
         required: false
         default: 0.6.0
         type: string

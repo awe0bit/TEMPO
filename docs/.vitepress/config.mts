@@ -46,7 +46,7 @@ export default defineConfig({
             items: [
               { text: '完整配置指南', link: '/CONFIGURATION' },
               { text: '自托管同步', link: '/DEPLOYMENT' },
-              { text: 'iOS 私有签名', link: '/IOS_PRIVATE_SIGNING' }
+              { text: 'iOS 本机签名', link: '/IOS_PRIVATE_SIGNING' }
             ]
           },
           {

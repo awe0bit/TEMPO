@@ -4,6 +4,8 @@
 
 <h1 align="center">Tempo</h1>
 
+<p align="center"><strong>简体中文</strong> · <a href="README.en.md">English</a></p>
+
 <p align="center"><strong>Time. Everything. Moments. Productivity. Organized.</strong></p>
 
 <p align="center">时间、信息、当下与效率，一切井然有序。一个本地优先、支持自托管同步的个人工作台。</p>

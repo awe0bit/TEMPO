@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 构建平台；auto 根据最近一次提交的路径自动选择
+        description: 构建平台 / Platform；auto 根据提交自动选择
         required: true
         default: auto
         type: choice
