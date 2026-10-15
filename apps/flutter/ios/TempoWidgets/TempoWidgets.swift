@@ -597,7 +597,8 @@ struct TempoLiveActivity: Widget {
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.55)
-            .frame(width: 52, alignment: .trailing)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.trailing, 8)
             .accessibilityLabel(Text(todaySummary(context.state)))
         }
         DynamicIslandExpandedRegion(.center) {
