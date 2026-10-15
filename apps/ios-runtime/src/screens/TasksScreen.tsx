@@ -23,7 +23,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [searchActive, setSearchActive] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [undo, setUndo] = useState<TempoTask>();
-  const [swipingTask, setSwipingTask] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
@@ -108,7 +107,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
         <View style={styles.listPanel}>
           <FlatList
             data={shown}
-            scrollEnabled={!swipingTask}
+            directionalLockEnabled
             keyExtractor={(item) => item.id}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
@@ -128,7 +127,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 onOpen={() => openComposer(item)}
                 onToggle={() => perform('task.toggle', { id: item.id })}
                 onDelete={() => remove(item)}
-                onSwipeActive={setSwipingTask}
               />
             )}
             contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
@@ -220,50 +218,47 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : inCurrentMonth ? theme.text : theme.tertiary, opacity: selected || inCurrentMonth ? 1 : .48 }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
-const DELETE_THRESHOLD = 72;
-const MAX_DELETE_DRAG = 180;
+const DELETE_THRESHOLD = 68;
+const MAX_DELETE_DRAG = 116;
 const DELETE_EXIT_DISTANCE = 460;
 
-function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipeActive }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onSwipeActive: (active: boolean) => void }) {
+function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void }) {
   const x = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
   const deleting = useRef(false);
-  const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 340, damping: 31, mass: .7 }).start();
+  const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 280, damping: 28, mass: .72 }).start();
   const deleteOpacity = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -10, 0], outputRange: [1, .2, 0], extrapolate: 'clamp' });
-  const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * .8;
+  const deleteScale = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -12, 0], outputRange: [1, .72, .68], extrapolate: 'clamp' });
+  const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => gesture.dx < -10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.05;
   const pan = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: wantsHorizontalSwipe,
     onMoveShouldSetPanResponderCapture: wantsHorizontalSwipe,
-    onPanResponderGrant: () => {
-      onSwipeActive(true);
-      x.stopAnimation((value) => { dragStart.current = value; });
-    },
+    onPanResponderGrant: () => x.stopAnimation((value) => { dragStart.current = value; }),
     onPanResponderMove: (_, gesture) => {
       let next = dragStart.current + gesture.dx;
       if (next > 0) next *= .12;
-      if (next < -MAX_DELETE_DRAG) next = -MAX_DELETE_DRAG + (next + MAX_DELETE_DRAG) * .12;
+      if (next < -MAX_DELETE_DRAG) next = -MAX_DELETE_DRAG + (next + MAX_DELETE_DRAG) * .28;
       x.setValue(next);
     },
     onPanResponderRelease: (_, gesture) => {
       const shouldDelete = gesture.dx <= -DELETE_THRESHOLD || (gesture.dx < -22 && gesture.vx < -.85);
-      if (!shouldDelete) { onSwipeActive(false); reset(); return; }
+      if (!shouldDelete) { reset(); return; }
       deleting.current = true;
-      Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 170, useNativeDriver: true }).start(({ finished }) => {
-        onSwipeActive(false);
+      Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 190, useNativeDriver: true }).start(({ finished }) => {
         if (!finished || !deleting.current) return;
         x.setValue(0);
         deleting.current = false;
         onDelete();
       });
     },
-    onPanResponderTerminate: () => { deleting.current = false; onSwipeActive(false); reset(); },
+    onPanResponderTerminate: () => { deleting.current = false; reset(); },
     onPanResponderTerminationRequest: () => false,
     onShouldBlockNativeResponder: () => true,
-  }), [onDelete, onSwipeActive, x]);
+  }), [onDelete, x]);
   const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
     <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
-      <Animated.View pointerEvents="none" style={[styles.deleteAction, { backgroundColor: theme.danger, opacity: deleteOpacity }]}><Text style={styles.deleteIcon}>×</Text><Text style={styles.actionText}>{t('tasks.delete')}</Text></Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.deleteAction, { opacity: deleteOpacity, transform: [{ scale: deleteScale }] }]}><View style={[styles.deleteBubble, { backgroundColor: theme.danger }]}><Text style={styles.deleteLabel}>{t('tasks.delete')}</Text></View></Animated.View>
       <Animated.View {...pan.panHandlers} style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface, transform: [{ translateX: x }] }]}>
         <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
         <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
@@ -312,9 +307,9 @@ const styles = StyleSheet.create({
   swipeWrap: { minHeight: 66, overflow: 'hidden' },
   groupTop: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   groupBottom: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  deleteAction: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 24, gap: 1 },
-  deleteIcon: { color: '#fff', fontSize: 21, lineHeight: 22, fontWeight: '300' },
-  actionText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  deleteAction: { position: 'absolute', top: 0, right: 8, bottom: 0, width: 60, justifyContent: 'center', alignItems: 'center' },
+  deleteBubble: { width: 54, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  deleteLabel: { color: '#FFFFFF', fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   taskRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
   checkbox: { width: 22, height: 22, borderWidth: 1.5, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   check: { color: '#fff', fontWeight: '800' },
