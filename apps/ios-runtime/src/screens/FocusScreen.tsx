@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { NativeTimerDirectionControl } from '../components/NativeControls';
-import { Pill, Screen, Sheet } from '../components/Primitives';
+import { Screen, Sheet } from '../components/Primitives';
 import { t } from '../i18n';
 import type { TempoTheme } from '../theme';
 import type { PomodoroState, TempoCommand } from '../types';
@@ -44,26 +44,95 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
         )}
       </View>
       <Sheet visible={statistics} onClose={() => setStatistics(false)} theme={theme} snapPoints={['78%', '94%']}>
-        <ScrollView contentContainerStyle={styles.stats}>
-          <Text style={[styles.statsTitle, { color: theme.text }]}>{t('focus.statistics')}</Text>
-          <View style={styles.metrics}><Metric theme={theme} label={t('focus.todayPomodoros')} value={`${state.completedFocusSessions}`} /><Metric theme={theme} label={t('focus.todayGoal')} value={`${state.dailyFocusGoal}`} /><Metric theme={theme} label={t('focus.totalFocus')} value={t('focus.hours', { count: Math.round(state.focusHistory.reduce((sum, item) => sum + item.durationSeconds, 0) / 3600) })} /></View>
-          <Text style={[styles.heatTitle, { color: theme.text }]}>{t('focus.heatmap')}</Text><Heatmap theme={theme} history={state.focusHistory} />
-          <Text style={[styles.heatTitle, { color: theme.text }]}>{t('focus.duration')}</Text><View style={styles.pills}>{[25, 35, 45, 60].map((minutes) => <Pill key={minutes} theme={theme} label={t('focus.minutes', { count: minutes })} selected={state.focusMinutes === minutes} onPress={() => perform('pomodoro.settings', { focus: minutes })} />)}</View>
-          <Text style={[styles.heatTitle, { color: theme.text }]}>{t('focus.todayGoal')}</Text><View style={styles.pills}>{[2, 4, 6, 8].map((count) => <Pill key={count} theme={theme} label={t('focus.sessions', { count })} selected={state.dailyFocusGoal === count} onPress={() => perform('pomodoro.settings', { dailyFocusGoal: count })} />)}</View>
-        </ScrollView>
+        <FocusStatistics theme={theme} state={state} perform={perform} />
       </Sheet>
     </Screen>
   );
 }
 function ProgressRing({ theme, progress, children }: { theme: TempoTheme; progress: number; children: React.ReactNode }) { const count = 72; const active = Math.round(progress * count); return <View style={styles.ring}>{Array.from({ length: count }, (_, index) => <View key={index} style={[styles.tick, { backgroundColor: index < active ? theme.accent : theme.separator, opacity: index < active ? 1 : .46, transform: [{ rotate: `${index * (360 / count)}deg` }, { translateY: -123 }] }]} />)}<View style={styles.ringContent}>{children}</View></View>; }
 function TimerActionButton({ theme, label, symbol, primary = false, onPress }: { theme: TempoTheme; label: string; symbol: string; primary?: boolean; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.actionButton, { backgroundColor: primary ? theme.accent : theme.surface, borderColor: primary ? theme.accent : theme.separator }, pressed && styles.buttonPressed]}><Text style={[styles.actionSymbol, { color: primary ? '#FFFFFF' : theme.secondary }]}>{symbol}</Text><Text numberOfLines={1} style={[styles.actionLabel, { color: primary ? '#FFFFFF' : theme.text }]}>{label}</Text></Pressable>; }
-function Metric({ theme, label, value }: { theme: TempoTheme; label: string; value: string }) { return <View style={[styles.metric, { backgroundColor: theme.surface }]}><Text style={[styles.metricLabel, { color: theme.secondary }]}>{label}</Text><Text style={[styles.metricValue, { color: theme.accent }]}>{value}</Text></View>; }
-function Heatmap({ theme, history }: { theme: TempoTheme; history: PomodoroState['focusHistory'] }) { const values = useMemo(() => Array.from({ length: 98 }, (_, i) => history.filter((item) => sameDate(new Date(item.startedAt), addDays(new Date(), i - 97))).length), [history]); return <View style={styles.heatmap}>{values.map((value, index) => <View key={index} style={[styles.heatCell, { backgroundColor: value ? theme.accent : theme.surfaceMuted, opacity: value ? Math.min(1, .35 + value * .2) : 1 }]} />)}</View>; }
+function FocusStatistics({ theme, state, perform }: { theme: TempoTheme; state: PomodoroState; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T> }) {
+  const completedHistory = state.focusHistory.filter((item) => item.completed);
+  const totalSeconds = completedHistory.reduce((sum, item) => sum + item.durationSeconds, 0);
+  const goalProgress = Math.min(1, state.completedFocusSessions / Math.max(1, state.dailyFocusGoal));
+  const goalWidth = `${Math.round(goalProgress * 100)}%` as `${number}%`;
+  return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.stats}>
+    <Text style={[styles.statsTitle, { color: theme.text }]}>{t('focus.statistics')}</Text>
+    <View style={[styles.summaryCard, { backgroundColor: theme.surface }]}>
+      <View style={styles.summaryTop}>
+        <View>
+          <Text style={[styles.summaryLabel, { color: theme.secondary }]}>{t('focus.todayPomodoros')}</Text>
+          <Text style={[styles.summaryValue, { color: theme.text }]}>{state.completedFocusSessions}<Text style={[styles.summaryGoal, { color: theme.tertiary }]}> / {state.dailyFocusGoal}</Text></Text>
+        </View>
+        <View style={styles.totalFocus}>
+          <Text style={[styles.summaryLabel, { color: theme.secondary }]}>{t('focus.totalFocus')}</Text>
+          <Text style={[styles.totalValue, { color: theme.text }]}>{formatFocusDuration(totalSeconds)}</Text>
+        </View>
+      </View>
+      <View style={[styles.progressTrack, { backgroundColor: theme.surfaceMuted }]}><View style={[styles.progressFill, { backgroundColor: theme.accent, width: goalWidth }]} /></View>
+    </View>
+    <Text style={[styles.sectionTitle, { color: theme.secondary }]}>{t('focus.heatmap')}</Text>
+    <WeeklyTrend theme={theme} history={completedHistory} />
+    <Text style={[styles.sectionTitle, { color: theme.secondary }]}>{t('focus.timerSettings')}</Text>
+    <View style={[styles.settingsGroup, { backgroundColor: theme.surface }]}>
+      <OptionRow theme={theme} label={t('focus.duration')} values={[25, 35, 45, 60]} selected={state.focusMinutes} accessibilityLabel={(value) => t('focus.minutes', { count: value })} onSelect={(focus) => perform('pomodoro.settings', { focus })} />
+      <View style={[styles.settingDivider, { backgroundColor: theme.separator }]} />
+      <OptionRow theme={theme} label={t('focus.todayGoal')} values={[2, 4, 6, 8]} selected={state.dailyFocusGoal} accessibilityLabel={(value) => t('focus.sessions', { count: value })} onSelect={(dailyFocusGoal) => perform('pomodoro.settings', { dailyFocusGoal })} />
+    </View>
+  </ScrollView>;
+}
+function WeeklyTrend({ theme, history }: { theme: TempoTheme; history: PomodoroState['focusHistory'] }) {
+  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => { const date = addDays(new Date(), index - 6); const seconds = history.filter((item) => sameDate(new Date(item.startedAt), date)).reduce((sum, item) => sum + item.durationSeconds, 0); return { date, minutes: Math.round(seconds / 60) }; }), [history]);
+  const peak = Math.max(1, ...days.map((day) => day.minutes));
+  return <View style={[styles.trendCard, { backgroundColor: theme.surface }]}>{days.map((day) => { const active = day.minutes > 0; return <View key={day.date.toDateString()} style={styles.trendColumn}><Text style={[styles.trendValue, { color: active ? theme.text : theme.tertiary }]}>{active ? day.minutes : '·'}</Text><View style={[styles.barTrack, { backgroundColor: theme.surfaceMuted }]}><View style={[styles.barFill, { backgroundColor: theme.accent, height: active ? Math.max(8, Math.round(day.minutes / peak * 70)) : 4, opacity: active ? 1 : .25 }]} /></View><Text style={[styles.dayLabel, { color: theme.secondary }]}>{day.date.toLocaleDateString(undefined, { weekday: 'narrow' })}</Text></View>; })}</View>;
+}
+function OptionRow({ theme, label, values, selected, accessibilityLabel, onSelect }: { theme: TempoTheme; label: string; values: number[]; selected: number; accessibilityLabel: (value: number) => string; onSelect: (value: number) => void }) { return <View style={styles.optionRow}><Text style={[styles.optionLabel, { color: theme.text }]}>{label}</Text><View style={[styles.optionControl, { backgroundColor: theme.surfaceMuted }]}>{values.map((value) => { const active = value === selected; return <Pressable key={value} accessibilityRole="button" accessibilityLabel={accessibilityLabel(value)} accessibilityState={{ selected: active }} onPress={() => onSelect(value)} style={({ pressed }) => [styles.option, active && { backgroundColor: theme.accent }, pressed && styles.optionPressed]}><Text style={[styles.optionText, { color: active ? '#FFFFFF' : theme.secondary }]}>{value}</Text></Pressable>; })}</View></View>; }
 function modeTitle(mode: PomodoroState['mode']) { return mode === 'focus' ? t('focus.focus') : mode === 'shortBreak' ? t('focus.shortBreak') : t('focus.longBreak'); }
 function formatTime(seconds: number) { const safe = Math.max(0, seconds); return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`; }
+function formatFocusDuration(seconds: number) { return seconds < 3600 ? t('focus.minutes', { count: Math.round(seconds / 60) }) : t('focus.hours', { count: Math.round(seconds / 360) / 10 }); }
 function addDays(date: Date, count: number) { const result = new Date(date); result.setDate(result.getDate() + count); return result; }
 function sameDate(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
 const styles = StyleSheet.create({
   timerChrome: { height: 60, alignItems: 'center', justifyContent: 'center' },
-  timerBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 20 }, mode: { fontSize: 17, fontWeight: '600', letterSpacing: -.2 }, ringGap: { marginTop: 30, marginBottom: 42 }, ring: { width: 264, height: 264, borderRadius: 132, alignItems: 'center', justifyContent: 'center' }, tick: { position: 'absolute', left: 131, top: 127, width: 2, height: 9, borderRadius: 1 }, ringContent: { alignItems: 'center', justifyContent: 'center' }, time: { fontSize: 56, fontWeight: '500', letterSpacing: -1.9, fontVariant: ['tabular-nums'] }, status: { fontSize: 15, marginTop: 8 }, controls: { flexDirection: 'row', alignItems: 'center', gap: 12 }, actionButton: { width: 136, height: 54, borderRadius: 27, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, actionSymbol: { fontSize: 16, fontWeight: '700' }, actionLabel: { maxWidth: 88, fontSize: 14, fontWeight: '600' }, startButton: { width: 168, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' }, startText: { color: '#fff', fontSize: 17, fontWeight: '700' }, buttonPressed: { opacity: .76, transform: [{ scale: .94 }] }, stats: { padding: 20, paddingBottom: 52 }, statsTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -.45, marginBottom: 20 }, metrics: { flexDirection: 'row', gap: 10 }, metric: { flex: 1, borderRadius: 24, padding: 16, minHeight: 104 }, metricLabel: { fontSize: 13, fontWeight: '400' }, metricValue: { fontSize: 27, fontWeight: '700', marginTop: 13 }, heatTitle: { fontSize: 18, fontWeight: '600', marginTop: 26, marginBottom: 12 }, heatmap: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 }, heatCell: { width: 14, height: 14, borderRadius: 4 }, pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  timerBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 20 },
+  mode: { fontSize: 17, fontWeight: '600', letterSpacing: -.2 },
+  ringGap: { marginTop: 30, marginBottom: 42 },
+  ring: { width: 264, height: 264, borderRadius: 132, alignItems: 'center', justifyContent: 'center' },
+  tick: { position: 'absolute', left: 131, top: 127, width: 2, height: 9, borderRadius: 1 },
+  ringContent: { alignItems: 'center', justifyContent: 'center' },
+  time: { fontSize: 56, fontWeight: '500', letterSpacing: -1.9, fontVariant: ['tabular-nums'] },
+  status: { fontSize: 15, marginTop: 8 },
+  controls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  actionButton: { width: 136, height: 54, borderRadius: 27, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  actionSymbol: { fontSize: 16, fontWeight: '700' },
+  actionLabel: { maxWidth: 88, fontSize: 14, fontWeight: '600' },
+  startButton: { width: 168, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  startText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  buttonPressed: { opacity: .76, transform: [{ scale: .94 }] },
+  stats: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 56 },
+  statsTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -.45, marginBottom: 16 },
+  summaryCard: { borderRadius: 24, padding: 18 },
+  summaryTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  summaryLabel: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  summaryValue: { fontSize: 42, lineHeight: 48, fontWeight: '600', letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+  summaryGoal: { fontSize: 18, fontWeight: '500', letterSpacing: -.3 },
+  totalFocus: { alignItems: 'flex-end', paddingBottom: 5 },
+  totalValue: { fontSize: 18, lineHeight: 24, fontWeight: '600', marginTop: 3, fontVariant: ['tabular-nums'] },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: 15 },
+  progressFill: { height: 6, borderRadius: 3 },
+  sectionTitle: { fontSize: 13, lineHeight: 18, fontWeight: '500', marginTop: 22, marginBottom: 8, paddingHorizontal: 4 },
+  trendCard: { height: 144, borderRadius: 24, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  trendColumn: { flex: 1, height: 118, alignItems: 'center', justifyContent: 'flex-end' },
+  trendValue: { height: 18, fontSize: 11, lineHeight: 16, fontVariant: ['tabular-nums'] },
+  barTrack: { width: 12, height: 74, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end', marginVertical: 4 },
+  barFill: { width: 12, borderRadius: 6 },
+  dayLabel: { fontSize: 11, lineHeight: 16 },
+  settingsGroup: { borderRadius: 24, overflow: 'hidden' },
+  optionRow: { minHeight: 66, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  optionLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500', flexShrink: 1 },
+  optionControl: { flex: 1, minWidth: 168, maxWidth: 204, height: 36, borderRadius: 18, padding: 3, flexDirection: 'row' },
+  option: { flex: 1, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  optionText: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  optionPressed: { opacity: .72, transform: [{ scale: .94 }] },
+  settingDivider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
 });
