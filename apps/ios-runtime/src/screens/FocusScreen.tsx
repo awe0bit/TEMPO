@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { NativeTimerDirectionControl } from '../components/NativeControls';
+import { NativeSymbol, NativeTimerDirectionControl, type NativeSymbolName } from '../components/NativeControls';
 import { Screen, Sheet } from '../components/Primitives';
 import { t } from '../i18n';
 import type { TempoTheme } from '../theme';
@@ -22,7 +22,7 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
   const totalSeconds = Math.max(1, (state.mode === 'focus' ? state.focusMinutes : state.mode === 'shortBreak' ? state.shortBreakMinutes : state.longBreakMinutes) * 60);
   const progress = state.timerDirection === 'countUp'
     ? Math.min(1, remaining / totalSeconds)
-    : Math.min(1, Math.max(0, 1 - remaining / totalSeconds));
+    : Math.min(1, Math.max(0, remaining / totalSeconds));
   return (
     <Screen theme={theme}>
       <View style={styles.timerChrome}>
@@ -32,14 +32,21 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
         />
       </View>
       <View style={styles.timerBody}>
-        <Text style={[styles.mode, { color: theme.text }]}>{modeTitle(state.mode)}</Text>
-        <View style={styles.ringGap}><ProgressRing theme={theme} progress={progress}><Text style={[styles.time, { color: theme.text }]}>{formatTime(remaining)}</Text><Text style={[styles.status, { color: theme.secondary }]}>{state.status === 'running' ? t('focus.running') : state.status === 'paused' ? t('focus.paused') : t('focus.todayProgress', { completed: state.completedFocusSessions, goal: state.dailyFocusGoal })}</Text></ProgressRing></View>
+        <ModeControl theme={theme} value={state.mode} disabled={state.status !== 'idle'} onChange={(mode) => void perform('pomodoro.mode', { mode })} />
+        <View style={[styles.timerStage, { backgroundColor: theme.surface }]}>
+          <ProgressRing theme={theme} progress={progress} running={state.status === 'running'}>
+            <Text style={[styles.mode, { color: theme.accent }]}>{modeTitle(state.mode)}</Text>
+            <Text style={[styles.time, { color: theme.text }]}>{formatTime(remaining)}</Text>
+            <Text style={[styles.status, { color: theme.secondary }]}>{state.status === 'running' ? t('focus.running') : state.status === 'paused' ? t('focus.paused') : t('focus.todayProgress', { completed: state.completedFocusSessions, goal: state.dailyFocusGoal })}</Text>
+            <SessionDots theme={theme} completed={state.completedFocusSessions} goal={state.dailyFocusGoal} />
+          </ProgressRing>
+        </View>
         {state.status === 'idle' ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={t('focus.start')} onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.startButton, { backgroundColor: theme.accent }, pressed && styles.buttonPressed]}><Text style={styles.startText}>{t('focus.start')}</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('focus.start')} onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.startButton, { backgroundColor: theme.accent }, pressed && styles.buttonPressed]}><NativeSymbol name="play.fill" color="#FFFFFF" size={16} /><Text style={styles.startText}>{t('focus.start')}</Text></Pressable>
         ) : (
           <View style={styles.controls}>
-            <TimerActionButton theme={theme} label={t('focus.stopTimer')} symbol="■" onPress={() => perform('pomodoro.stop')} />
-            <TimerActionButton theme={theme} primary label={state.status === 'running' ? t('focus.pauseTimer') : t('focus.resumeTimer')} symbol={state.status === 'running' ? 'Ⅱ' : '▶'} onPress={() => perform('pomodoro.toggle')} />
+            <TimerActionButton theme={theme} label={t('focus.stopTimer')} symbol="stop.fill" onPress={() => perform('pomodoro.stop')} />
+            <TimerActionButton theme={theme} primary label={state.status === 'running' ? t('focus.pauseTimer') : t('focus.resumeTimer')} symbol={state.status === 'running' ? 'pause.fill' : 'play.fill'} onPress={() => perform('pomodoro.toggle')} />
           </View>
         )}
       </View>
@@ -49,8 +56,10 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
     </Screen>
   );
 }
-function ProgressRing({ theme, progress, children }: { theme: TempoTheme; progress: number; children: React.ReactNode }) { const count = 72; const active = Math.round(progress * count); return <View style={styles.ring}>{Array.from({ length: count }, (_, index) => <View key={index} style={[styles.tick, { backgroundColor: index < active ? theme.accent : theme.separator, opacity: index < active ? 1 : .46, transform: [{ rotate: `${index * (360 / count)}deg` }, { translateY: -123 }] }]} />)}<View style={styles.ringContent}>{children}</View></View>; }
-function TimerActionButton({ theme, label, symbol, primary = false, onPress }: { theme: TempoTheme; label: string; symbol: string; primary?: boolean; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.actionButton, { backgroundColor: primary ? theme.accent : theme.surface, borderColor: primary ? theme.accent : theme.separator }, pressed && styles.buttonPressed]}><Text style={[styles.actionSymbol, { color: primary ? '#FFFFFF' : theme.secondary }]}>{symbol}</Text><Text numberOfLines={1} style={[styles.actionLabel, { color: primary ? '#FFFFFF' : theme.text }]}>{label}</Text></Pressable>; }
+function ModeControl({ theme, value, disabled, onChange }: { theme: TempoTheme; value: PomodoroState['mode']; disabled: boolean; onChange: (mode: PomodoroState['mode']) => void }) { const modes: PomodoroState['mode'][] = ['focus', 'shortBreak', 'longBreak']; return <View style={[styles.modeControl, { backgroundColor: theme.surfaceMuted, opacity: disabled ? .58 : 1 }]}>{modes.map((mode) => { const selected = mode === value; return <Pressable key={mode} disabled={disabled} accessibilityRole="button" accessibilityState={{ selected, disabled }} onPress={() => onChange(mode)} style={({ pressed }) => [styles.modeOption, selected && { backgroundColor: theme.surfaceElevated }, pressed && styles.modePressed]}><Text numberOfLines={1} style={[styles.modeOptionText, { color: selected ? theme.text : theme.secondary }]}>{modeTitle(mode)}</Text>{selected ? <View style={[styles.modeIndicator, { backgroundColor: theme.accent }]} /> : null}</Pressable>; })}</View>; }
+function ProgressRing({ theme, progress, running, children }: { theme: TempoTheme; progress: number; running: boolean; children: React.ReactNode }) { const count = 84; const active = Math.round(progress * count); return <View style={[styles.ring, { backgroundColor: theme.surfaceElevated, borderColor: theme.separator }]}>{Array.from({ length: count }, (_, index) => <View key={index} style={[styles.tick, { backgroundColor: index < active ? theme.accent : theme.tertiary, opacity: index < active ? 1 : .18, transform: [{ rotate: `${index * (360 / count)}deg` }, { translateY: -132 }] }]} />)}<View style={[styles.ringCore, { backgroundColor: theme.surface }]}><View style={[styles.liveDot, { backgroundColor: running ? theme.success : theme.tertiary }]} />{children}</View></View>; }
+function SessionDots({ theme, completed, goal }: { theme: TempoTheme; completed: number; goal: number }) { const count = Math.min(8, Math.max(1, goal)); return <View style={styles.sessionDots}>{Array.from({ length: count }, (_, index) => <View key={index} style={[styles.sessionDot, { backgroundColor: index < completed ? theme.accent : theme.separator }]} />)}</View>; }
+function TimerActionButton({ theme, label, symbol, primary = false, onPress }: { theme: TempoTheme; label: string; symbol: NativeSymbolName; primary?: boolean; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.actionButton, { backgroundColor: primary ? theme.accent : theme.surface, borderColor: primary ? theme.accent : theme.separator }, pressed && styles.buttonPressed]}><NativeSymbol name={symbol} color={primary ? '#FFFFFF' : theme.secondary} size={15} /><Text numberOfLines={1} style={[styles.actionLabel, { color: primary ? '#FFFFFF' : theme.text }]}>{label}</Text></Pressable>; }
 function FocusStatistics({ theme, state, perform }: { theme: TempoTheme; state: PomodoroState; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T> }) {
   const completedHistory = state.focusHistory.filter((item) => item.completed);
   const totalSeconds = completedHistory.reduce((sum, item) => sum + item.durationSeconds, 0);
@@ -93,20 +102,27 @@ function formatFocusDuration(seconds: number) { return seconds < 3600 ? t('focus
 function addDays(date: Date, count: number) { const result = new Date(date); result.setDate(result.getDate() + count); return result; }
 function sameDate(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
 const styles = StyleSheet.create({
-  timerChrome: { height: 60, alignItems: 'center', justifyContent: 'center' },
-  timerBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 20 },
-  mode: { fontSize: 17, fontWeight: '600', letterSpacing: -.2 },
-  ringGap: { marginTop: 30, marginBottom: 42 },
-  ring: { width: 264, height: 264, borderRadius: 132, alignItems: 'center', justifyContent: 'center' },
-  tick: { position: 'absolute', left: 131, top: 127, width: 2, height: 9, borderRadius: 1 },
-  ringContent: { alignItems: 'center', justifyContent: 'center' },
-  time: { fontSize: 56, fontWeight: '500', letterSpacing: -1.9, fontVariant: ['tabular-nums'] },
-  status: { fontSize: 15, marginTop: 8 },
+  timerChrome: { height: 58, alignItems: 'center', justifyContent: 'center' },
+  timerBody: { flex: 1, alignItems: 'center', paddingTop: 12, paddingBottom: 18 },
+  modeControl: { width: 300, height: 42, borderRadius: 21, padding: 3, flexDirection: 'row' },
+  modeOption: { flex: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  modeOptionText: { fontSize: 13, fontWeight: '600' },
+  modeIndicator: { position: 'absolute', bottom: 4, width: 14, height: 2, borderRadius: 1 },
+  modePressed: { opacity: .7, transform: [{ scale: .96 }] },
+  timerStage: { width: 326, height: 326, borderRadius: 163, alignItems: 'center', justifyContent: 'center', marginTop: 26, marginBottom: 28, shadowColor: '#000000', shadowOpacity: .08, shadowRadius: 24, shadowOffset: { width: 0, height: 12 } },
+  mode: { fontSize: 14, fontWeight: '700', letterSpacing: .2, marginBottom: 7 },
+  ring: { width: 294, height: 294, borderRadius: 147, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  tick: { position: 'absolute', left: 145.5, top: 140, width: 3, height: 14, borderRadius: 2 },
+  ringCore: { width: 238, height: 238, borderRadius: 119, alignItems: 'center', justifyContent: 'center' },
+  liveDot: { position: 'absolute', top: 22, width: 7, height: 7, borderRadius: 4 },
+  time: { fontSize: 61, lineHeight: 70, fontWeight: '500', letterSpacing: -2.2, fontVariant: ['tabular-nums'] },
+  status: { fontSize: 14, marginTop: 5 },
+  sessionDots: { flexDirection: 'row', gap: 5, marginTop: 14 },
+  sessionDot: { width: 6, height: 6, borderRadius: 3 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   actionButton: { width: 136, height: 54, borderRadius: 27, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  actionSymbol: { fontSize: 16, fontWeight: '700' },
   actionLabel: { maxWidth: 88, fontSize: 14, fontWeight: '600' },
-  startButton: { width: 168, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center' },
+  startButton: { width: 180, height: 56, borderRadius: 28, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   startText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   buttonPressed: { opacity: .76, transform: [{ scale: .94 }] },
   stats: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 56 },

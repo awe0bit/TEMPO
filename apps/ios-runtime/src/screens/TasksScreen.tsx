@@ -121,14 +121,14 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
               <TaskRow
                 theme={theme}
                 task={item}
-                separated={index < shown.length - 1}
+                first={index === 0}
+                last={index === shown.length - 1}
                 onOpen={() => openComposer(item)}
                 onToggle={() => perform('task.toggle', { id: item.id })}
                 onDelete={() => remove(item)}
-                onReschedule={(date) => perform('task.update', { id: item.id, scheduledAt: date })}
               />
             )}
-            contentContainerStyle={shown.length ? [styles.listContent, { backgroundColor: theme.surface }] : styles.emptyContent}
+            contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
           />
         </View>
 
@@ -217,30 +217,54 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : inCurrentMonth ? theme.text : theme.tertiary, opacity: selected || inCurrentMonth ? 1 : .48 }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
-function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onReschedule }: { task: TempoTask; theme: TempoTheme; separated: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onReschedule: (date?: string) => void }) {
+const DELETE_ACTION_WIDTH = 92;
+
+function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void }) {
   const x = useRef(new Animated.Value(0)).current;
+  const dragStart = useRef(0);
+  const opened = useRef(false);
+  const settle = (target: number, completion?: () => void) => {
+    opened.current = target !== 0;
+    Animated.spring(x, { toValue: target, useNativeDriver: true, stiffness: 320, damping: 30, mass: .72 }).start(({ finished }) => {
+      if (finished) completion?.();
+    });
+  };
   const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-    onPanResponderMove: (_, gesture) => x.setValue(Math.max(-148, Math.min(0, gesture.dx))),
-    onPanResponderRelease: (_, gesture) => Animated.spring(x, { toValue: gesture.dx < -62 ? -148 : 0, useNativeDriver: true, stiffness: 240, damping: 25 }).start(),
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 7 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onPanResponderGrant: () => x.stopAnimation((value) => { dragStart.current = value; }),
+    onPanResponderMove: (_, gesture) => {
+      let next = dragStart.current + gesture.dx;
+      if (next > 0) next *= .12;
+      if (next < -DELETE_ACTION_WIDTH) next = -DELETE_ACTION_WIDTH + (next + DELETE_ACTION_WIDTH) * .16;
+      x.setValue(next);
+    },
+    onPanResponderRelease: (_, gesture) => x.stopAnimation((value) => {
+      const projected = value + gesture.vx * 24;
+      settle(projected < -DELETE_ACTION_WIDTH * .48 ? -DELETE_ACTION_WIDTH : 0);
+    }),
+    onPanResponderTerminate: () => settle(0),
+    onPanResponderTerminationRequest: () => true,
   }), [x]);
+  const closeOr = (action: () => void) => opened.current ? settle(0) : action();
+  const deleteTask = () => settle(-DELETE_ACTION_WIDTH, () => {
+    x.setValue(0);
+    opened.current = false;
+    onDelete();
+  });
+  const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
-    <View style={styles.swipeWrap}>
-      <View style={styles.actions}>
-        <Pressable onPress={() => onReschedule(addDays(new Date(), 1).toISOString())} style={[styles.action, { backgroundColor: theme.accent }]}><Text style={styles.actionText}>{t('tasks.tomorrow')}</Text></Pressable>
-        <Pressable onPress={onDelete} style={[styles.action, { backgroundColor: theme.danger }]}><Text style={styles.actionText}>{t('tasks.delete')}</Text></Pressable>
-      </View>
-      <Animated.View {...pan.panHandlers} style={[styles.taskRow, { backgroundColor: theme.surface, transform: [{ translateX: x }] }]}>
-        <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.secondary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
-        <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
+    <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.danger }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={deleteTask} style={styles.deleteAction}><Text style={styles.deleteIcon}>×</Text><Text style={styles.actionText}>{t('tasks.delete')}</Text></Pressable>
+      <Animated.View {...pan.panHandlers} style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface, transform: [{ translateX: x }] }]}>
+        <Pressable onPress={() => closeOr(onToggle)} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
+        <Pressable onPress={() => closeOr(onOpen)} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
           <View style={styles.taskText}>
-            <Text numberOfLines={2} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text>
-            {task.notes ? <Text numberOfLines={2} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
+            <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
+            {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
           </View>
-          {task.startAt ? <Text style={[styles.taskDate, { color: theme.secondary }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text> : null}
-          <Text style={[styles.rowChevron, { color: theme.tertiary }]}>›</Text>
+          {task.startAt ? <View style={[styles.dateBadge, { backgroundColor: theme.accentSoft }]}><Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text></View> : null}
         </Pressable>
-        {separated ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
+        {!last ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
       </Animated.View>
     </View>
   );
@@ -270,26 +294,30 @@ const styles = StyleSheet.create({
   calendarHandleTouch: { height: 22, alignItems: 'center', justifyContent: 'center' },
   calendarHandleButton: { width: 104, height: 22, alignItems: 'center', justifyContent: 'center' },
   calendarHandle: { width: 34, height: 4, borderRadius: 2, opacity: .38 },
-  listPanel: { flex: 1, marginHorizontal: 20, marginTop: 8, marginBottom: 78 },
-  listContent: { borderRadius: 24, overflow: 'hidden' },
+  listPanel: { flex: 1, marginHorizontal: 18, marginTop: 8, marginBottom: 78 },
+  listContent: { paddingBottom: 18 },
   emptyContent: { flexGrow: 1 },
-  groupHeader: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
-  groupTitle: { flex: 1, fontSize: 18, fontWeight: '600', letterSpacing: -.2 },
-  groupCount: { fontSize: 13, fontWeight: '600' },
-  swipeWrap: { minHeight: 72, overflow: 'hidden' },
-  actions: { ...StyleSheet.absoluteFill, flexDirection: 'row', justifyContent: 'flex-end' },
-  action: { width: 74, justifyContent: 'center', alignItems: 'center' },
-  actionText: { color: '#fff', fontWeight: '600' },
-  taskRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', paddingLeft: 20 },
-  checkbox: { width: 24, height: 24, borderWidth: 1.6, borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginRight: 13 },
+  groupHeader: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
+  groupTitle: { flex: 1, fontSize: 15, fontWeight: '600', letterSpacing: -.12 },
+  groupCount: { minWidth: 26, height: 24, borderRadius: 12, textAlign: 'center', textAlignVertical: 'center', fontSize: 12, fontWeight: '600' },
+  swipeWrap: { minHeight: 66, overflow: 'hidden' },
+  groupTop: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  groupBottom: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  deleteAction: { position: 'absolute', top: 0, right: 0, bottom: 0, width: DELETE_ACTION_WIDTH, justifyContent: 'center', alignItems: 'center', gap: 1 },
+  deleteIcon: { color: '#fff', fontSize: 21, lineHeight: 22, fontWeight: '300' },
+  actionText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  taskRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
+  checkbox: { width: 22, height: 22, borderWidth: 1.5, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   check: { color: '#fff', fontWeight: '800' },
-  taskMain: { minHeight: 72, flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
-  taskText: { flex: 1, paddingVertical: 12 },
-  taskTitle: { fontSize: 17, fontWeight: '400', lineHeight: 22 },
-  taskNotes: { fontSize: 14, lineHeight: 19, marginTop: 3 },
-  taskDate: { fontSize: 12, fontWeight: '500', marginLeft: 10 },
-  rowChevron: { fontSize: 23, fontWeight: '300', marginLeft: 8 },
-  rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 53, right: 0, bottom: 0 },
+  taskMain: { minHeight: 66, flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
+  taskText: { flex: 1, paddingVertical: 10 },
+  titleLine: { flexDirection: 'row', alignItems: 'center' },
+  priorityDot: { width: 5, height: 5, borderRadius: 3, marginRight: 7 },
+  taskTitle: { flexShrink: 1, fontSize: 16.5, fontWeight: '500', lineHeight: 21 },
+  taskNotes: { fontSize: 13, lineHeight: 18, marginTop: 2 },
+  dateBadge: { minWidth: 40, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginLeft: 10, paddingHorizontal: 9 },
+  taskDate: { fontSize: 11.5, fontWeight: '600' },
+  rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 50, right: 14, bottom: 0 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26, paddingBottom: 34 },
   emptyIcon: { fontSize: 38, lineHeight: 44, fontWeight: '200' },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 10 },
