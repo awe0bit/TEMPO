@@ -24,6 +24,7 @@
 - **RSS:** organize sources, search articles, read offline, save favorites, translate content, and create AI summaries.
 - **Cross-device sync:** synchronize tasks, focus history, and RSS state through your own server.
 - **Apple system features:** use Home Screen and Lock Screen widgets, Live Activities, and Dynamic Island on supported devices.
+- **Chinese and English UI:** iOS follows the system language and can be overridden in **Settings → Tempo → Language**.
 - **Offline first:** core features continue to work when the server or network is unavailable.
 
 ## Download and install
@@ -37,7 +38,7 @@ Public builds are available on [GitHub Releases](https://github.com/awe0bit/TEMP
 | Android | `.apk` | Android handles installation and compatible in-place updates |
 | Windows | portable `.zip` or setup `.exe` | Windows may show a SmartScreen warning for unsigned builds |
 
-Platforms are released independently, so the newest release may not contain all four builds. **Settings → Software update** automatically finds the latest build for the current platform.
+Platforms are released independently, so the newest release may not contain all four builds. **Settings → About Tempo** automatically finds the latest build for the current platform.
 
 ## Use Tempo
 
@@ -50,7 +51,7 @@ See the [configuration guide](docs/en/CONFIGURATION.md) and [self-hosted deploym
 
 ## Updates
 
-Open **Settings → Software update** to check for a new native build. Compatible iOS page content can update automatically through OTA; changes to native navigation, permissions, widgets, or Dynamic Island still require installing a newer IPA.
+Open **Settings → About Tempo** to check for a new native build. Compatible iOS page content can update automatically through OTA; changes to native navigation, permissions, widgets, or Dynamic Island still require installing a newer IPA.
 
 ## License
 

@@ -108,6 +108,8 @@ jobs:
                   build_ios=true; build_macos=true ;;
                 apps/ios-runtime/package.json|apps/ios-runtime/package-lock.json|apps/ios-runtime/app.config.js|apps/ios-runtime/runtime-version.txt|apps/ios-runtime/scripts/*|apps/ios-runtime/babel.config.js|apps/ios-runtime/metro.config.js)
                   build_ios=true ;;
+                apps/flutter/ios/TempoWidgets/*|apps/flutter/ios/Shared/TempoPomodoroAttributes.swift)
+                  build_ios=true ;;
                 apps/android/*)
                   build_android=true ;;
                 apps/flutter/*|scripts/windows/*)

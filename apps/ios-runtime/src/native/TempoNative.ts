@@ -1,6 +1,7 @@
 import * as Brownfield from 'expo-brownfield';
 import { Platform } from 'react-native';
 
+import { t } from '../i18n';
 import type { TempoCommand, TempoSnapshot } from '../types';
 
 type NativeMessage = {
@@ -31,7 +32,7 @@ Brownfield.addMessageListener((message: NativeMessage) => {
     clearTimeout(pending.timeout);
     pendingRequests.delete(message.requestId);
     if (message.ok === false) {
-      pending.reject(new Error(message.error || '原生操作失败'));
+      pending.reject(new Error(message.error || t('error.nativeOperationFailed')));
     } else {
       pending.resolve(message.result);
     }
@@ -53,7 +54,7 @@ function request<T>(message: Record<string, unknown>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timeout = setTimeout(() => {
       pendingRequests.delete(requestId);
-      reject(new Error('原生容器响应超时'));
+      reject(new Error(t('error.nativeTimeout')));
     }, 15_000);
     pendingRequests.set(requestId, {
       resolve: resolve as (value: unknown) => void,

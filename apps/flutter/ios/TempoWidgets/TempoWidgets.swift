@@ -6,17 +6,21 @@ import WidgetKit
 
 private let tempoAppGroup = "group.one.darker.qingxu"
 
+private func tempoLocalized(_ key: String) -> String {
+  NSLocalizedString(key, bundle: .main, comment: "")
+}
+
+private func tempoLocalizedFormat(_ key: String, _ arguments: CVarArg...) -> String {
+  String(format: tempoLocalized(key), arguments: arguments)
+}
+
 private enum TempoWidgetPalette {
   static let background = Color(uiColor: UIColor { traits in
     traits.userInterfaceStyle == .dark
       ? UIColor(red: 0.071, green: 0.071, blue: 0.078, alpha: 1)
       : UIColor(red: 0.980, green: 0.980, blue: 0.980, alpha: 1)
   })
-  static let accent = Color(uiColor: UIColor { traits in
-    traits.userInterfaceStyle == .dark
-      ? UIColor(red: 0.427, green: 0.620, blue: 1.000, alpha: 1)
-      : UIColor(red: 0.204, green: 0.471, blue: 0.965, alpha: 1)
-  })
+  static let accent = Color(red: 0.200, green: 0.612, blue: 1.000)
   static let elevated = Color(uiColor: UIColor { traits in
     traits.userInterfaceStyle == .dark
       ? UIColor(red: 0.118, green: 0.118, blue: 0.133, alpha: 1)
@@ -191,14 +195,16 @@ private struct TodayWidgetView: View {
       VStack(alignment: .leading, spacing: 3) {
         Label("今日任务", systemImage: "checkmark.circle")
           .font(.caption.weight(.semibold))
-        Text(entry.nextTodayTaskTitle ?? (entry.todayTaskCount == 0 ? "今天已清空" : "还有 \(entry.todayTaskCount) 项待办"))
+        Text(entry.nextTodayTaskTitle ?? (entry.todayTaskCount == 0
+          ? tempoLocalized("今天已清空")
+          : tempoLocalizedFormat("还有 %d 项待办", entry.todayTaskCount)))
           .font(.caption2)
           .lineLimit(2)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .widgetURL(URL(string: "qingxu://today"))
     } else if family == .accessoryInline {
-      Label("今日 \(entry.todayTaskCount) 项待办", systemImage: "checkmark.circle")
+      Label(tempoLocalizedFormat("今日 %d 项待办", entry.todayTaskCount), systemImage: "checkmark.circle")
         .widgetURL(URL(string: "qingxu://today"))
     } else {
       TempoWidgetSurface {
@@ -225,7 +231,7 @@ private struct TodayWidgetView: View {
                 Text("\(entry.todayTaskCount)")
                   .font(.system(size: 44, weight: .semibold, design: .rounded))
                   .monospacedDigit()
-                Text(entry.todayTaskCount == 0 ? "今天已清空" : "项待办")
+                Text(tempoLocalized(entry.todayTaskCount == 0 ? "今天已清空" : "项待办"))
                   .font(.caption)
                   .foregroundStyle(.secondary)
               }
@@ -237,7 +243,7 @@ private struct TodayWidgetView: View {
 
               VStack(alignment: .leading, spacing: 7) {
                 if entry.todayTaskTitles.isEmpty {
-                  Text("给自己留一点轻松")
+                  Text(tempoLocalized("给自己留一点轻松"))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                 } else {
@@ -259,7 +265,7 @@ private struct TodayWidgetView: View {
             Text("\(entry.todayTaskCount)")
               .font(.system(size: 42, weight: .semibold, design: .rounded))
               .monospacedDigit()
-            Text(entry.nextTodayTaskTitle ?? (entry.todayTaskCount == 0 ? "今天已清空" : "项待办"))
+            Text(entry.nextTodayTaskTitle ?? tempoLocalized(entry.todayTaskCount == 0 ? "今天已清空" : "项待办"))
               .font(.caption.weight(.medium))
               .foregroundStyle(.secondary)
               .lineLimit(2)
@@ -349,17 +355,17 @@ private struct FocusWidgetView: View {
 
   private var modeTitle: String {
     switch entry.mode {
-    case "shortBreak": return "短暂休息"
-    case "longBreak": return "长休息"
-    default: return "专注"
+    case "shortBreak": return tempoLocalized("短暂休息")
+    case "longBreak": return tempoLocalized("长休息")
+    default: return tempoLocalized("专注")
     }
   }
 
   private var statusTitle: String {
     switch entry.status {
-    case "running": return "实时计时中"
-    case "paused": return "已暂停"
-    default: return "准备开始"
+    case "running": return tempoLocalized("实时计时中")
+    case "paused": return tempoLocalized("已暂停")
+    default: return tempoLocalized("准备开始")
     }
   }
 
@@ -381,7 +387,7 @@ private struct OverviewWidgetView: View {
           Text("\(entry.todayTaskCount)")
             .font(.system(size: 38, weight: .semibold, design: .rounded))
             .monospacedDigit()
-          Text(entry.nextTodayTaskTitle ?? (entry.todayTaskCount == 0 ? "今天已清空" : "项待办"))
+          Text(entry.nextTodayTaskTitle ?? tempoLocalized(entry.todayTaskCount == 0 ? "今天已清空" : "项待办"))
             .font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
             .lineLimit(2)
@@ -403,7 +409,7 @@ private struct OverviewWidgetView: View {
             .font(.system(size: 30, weight: .medium, design: .rounded).monospacedDigit())
             .lineLimit(1)
             .minimumScaleFactor(0.72)
-          Text(entry.status == "running" ? "正在同步计时" : "准备下一次专注")
+          Text(tempoLocalized(entry.status == "running" ? "正在同步计时" : "准备下一次专注"))
             .font(.caption2)
             .foregroundStyle(.secondary)
         }
@@ -426,9 +432,9 @@ private struct OverviewWidgetView: View {
 
   private var modeTitle: String {
     switch entry.mode {
-    case "shortBreak": return "短暂休息"
-    case "longBreak": return "长休息"
-    default: return "专注"
+    case "shortBreak": return tempoLocalized("短暂休息")
+    case "longBreak": return tempoLocalized("长休息")
+    default: return tempoLocalized("专注")
     }
   }
 
@@ -460,7 +466,7 @@ private struct AmbientWidgetView: View {
             .foregroundStyle(TempoWidgetPalette.accent)
         }
         Spacer(minLength: 0)
-        Text(entry.quote?.text ?? "把今天真正重要的事做好。")
+        Text(entry.quote?.text ?? tempoLocalized("把今天真正重要的事做好。"))
           .font(family == .systemMedium ? .subheadline.weight(.medium) : .caption.weight(.medium))
           .lineLimit(family == .systemMedium ? 2 : 3)
         if let source = entry.quote?.source, !source.isEmpty {
@@ -496,9 +502,9 @@ private struct WidgetHeatmapView: View {
           }
         }
         HStack {
-          Text("今日已完成 \(entry.todayCompleted) 次")
+          Text(tempoLocalizedFormat("今日已完成 %d 次", entry.todayCompleted))
           Spacer()
-          Text("目标 \(entry.dailyGoal) 次")
+          Text(tempoLocalizedFormat("目标 %d 次", entry.dailyGoal))
         }
         .font(.caption2.weight(.medium))
         .foregroundStyle(.secondary)
@@ -560,7 +566,7 @@ struct TempoLiveActivity: Widget {
         VStack(alignment: .leading, spacing: 2) {
           HStack(spacing: 6) {
             Text(modeTitle(context.state.mode)).font(.caption.weight(.semibold))
-            Text("今日 \(context.state.todayCompleted)/\(context.state.dailyGoal)")
+            Text(todaySummary(context.state))
               .font(.caption2)
               .foregroundStyle(.secondary)
           }
@@ -578,39 +584,55 @@ struct TempoLiveActivity: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          Image(systemName: context.state.mode == "focus" ? "timer" : "cup.and.saucer.fill")
-            .font(.system(size: 16, weight: .semibold))
+          Image(systemName: phaseSymbol(context.state.mode))
+            .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(TempoWidgetPalette.accent)
-            .frame(width: 28, height: 28)
+            .frame(width: 30, height: 30)
+            .background(TempoWidgetPalette.accent.opacity(0.16), in: Circle())
         }
         DynamicIslandExpandedRegion(.trailing) {
-          liveTimer(context.state)
-            .font(.system(size: 19, weight: .semibold, design: .rounded).monospacedDigit())
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
-            .frame(width: 66, alignment: .trailing)
-            .id(context.state.phaseID)
+          Text(todaySummary(context.state))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+        }
+        DynamicIslandExpandedRegion(.center) {
+          Text(modeTitle(context.state.mode))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
         }
         DynamicIslandExpandedRegion(.bottom) {
-          VStack(spacing: 7) {
+          VStack(spacing: 10) {
+            liveTimer(context.state)
+              .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
+              .foregroundStyle(.white)
+              .lineLimit(1)
+              .minimumScaleFactor(0.72)
+              .frame(maxWidth: .infinity, alignment: .center)
+              .id(context.state.phaseID)
+
             HStack(spacing: 8) {
-              Text(modeTitle(context.state.mode))
-                .font(.system(size: 13, weight: .semibold))
-              Spacer(minLength: 8)
-              Text("今日 \(context.state.todayCompleted)/\(context.state.dailyGoal)")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+              Label(
+                timerDirectionTitle(context.state.timerDirection),
+                systemImage: context.state.timerDirection == "countUp" ? "stopwatch" : "hourglass"
+              )
+              Spacer(minLength: 12)
+              Text(goalSummary(context.state))
             }
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(.secondary)
             .lineLimit(1)
 
-            FocusHeatmapStrip(values: context.state.focusHeatmap)
+            dailyGoalProgress(context.state)
           }
           .frame(maxWidth: .infinity)
-          .padding(.horizontal, 2)
-          .padding(.bottom, 2)
+          .padding(.horizontal, 4)
+          .padding(.top, 2)
+          .padding(.bottom, 5)
+          .accessibilityElement(children: .combine)
         }
       } compactLeading: {
-        Image(systemName: context.state.mode == "focus" ? "timer" : "cup.and.saucer.fill")
+        Image(systemName: phaseSymbol(context.state.mode))
           .font(.system(size: 11, weight: .semibold))
           .foregroundStyle(TempoWidgetPalette.accent)
           .frame(width: 12)
@@ -622,7 +644,8 @@ struct TempoLiveActivity: Widget {
           .frame(width: 34, alignment: .trailing)
           .id(context.state.phaseID)
       } minimal: {
-        Image(systemName: context.state.mode == "focus" ? "timer" : "cup.and.saucer.fill")
+        Image(systemName: phaseSymbol(context.state.mode))
+          .foregroundStyle(TempoWidgetPalette.accent)
       }
       .widgetURL(URL(string: "qingxu://pomodoro"))
       .keylineTint(TempoWidgetPalette.accent)
@@ -642,10 +665,46 @@ struct TempoLiveActivity: Widget {
 
   private func modeTitle(_ mode: String) -> String {
     switch mode {
-    case "shortBreak": return "休息"
-    case "longBreak": return "长休息"
-    default: return "专注"
+    case "shortBreak": return tempoLocalized("休息")
+    case "longBreak": return tempoLocalized("长休息")
+    default: return tempoLocalized("专注")
     }
+  }
+
+  private func phaseSymbol(_ mode: String) -> String {
+    mode == "focus" ? "timer" : "cup.and.saucer.fill"
+  }
+
+  private func timerDirectionTitle(_ direction: String) -> String {
+    tempoLocalized(direction == "countUp" ? "正计时" : "番茄计时")
+  }
+
+  private func goalSummary(_ state: TempoPomodoroAttributes.ContentState) -> String {
+    let remaining = max(0, state.dailyGoal - state.todayCompleted)
+    return remaining == 0
+      ? tempoLocalized("今日目标已完成")
+      : tempoLocalizedFormat("还差 %d 次", remaining)
+  }
+
+  private func todaySummary(_ state: TempoPomodoroAttributes.ContentState) -> String {
+    tempoLocalizedFormat("今日 %d/%d", state.todayCompleted, state.dailyGoal)
+  }
+
+  private func dailyGoalProgress(_ state: TempoPomodoroAttributes.ContentState) -> some View {
+    let goal = max(1, state.dailyGoal)
+    let progress = min(1, max(0, Double(state.todayCompleted) / Double(goal)))
+
+    return GeometryReader { proxy in
+      ZStack(alignment: .leading) {
+        Capsule().fill(Color.white.opacity(0.14))
+        Capsule()
+          .fill(TempoWidgetPalette.accent.gradient)
+          .frame(width: proxy.size.width * progress)
+      }
+    }
+    .frame(height: 4)
+    .accessibilityLabel(Text(tempoLocalized("今日专注进度")))
+    .accessibilityValue(Text("\(state.todayCompleted) / \(state.dailyGoal)"))
   }
 
 }
@@ -689,43 +748,6 @@ struct TempoHeatmapWidget: Widget {
     .configurationDisplayName("专注热力图")
     .description("以简洁热力图查看近十八周的专注节奏。")
     .supportedFamilies([.systemMedium])
-  }
-}
-
-private struct FocusHeatmapStrip: View {
-  let values: [Int]
-  private let columns = 18
-  private let rows = 7
-
-  var body: some View {
-    HStack(spacing: 3) {
-      ForEach(0..<columns, id: \.self) { column in
-        VStack(spacing: 2) {
-          ForEach(0..<rows, id: \.self) { row in
-            RoundedRectangle(cornerRadius: 1.2, style: .continuous)
-              .fill(color(for: value(at: column * rows + row)))
-              .frame(width: 7, height: 4)
-          }
-        }
-      }
-    }
-    .frame(maxWidth: .infinity)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("近十八周专注热力图")
-  }
-
-  private func value(at index: Int) -> Int {
-    values.indices.contains(index) ? min(4, max(0, values[index])) : 0
-  }
-
-  private func color(for level: Int) -> Color {
-    switch level {
-    case 1: return Color(red: 0.39, green: 0.78, blue: 0.54).opacity(0.48)
-    case 2: return Color(red: 0.27, green: 0.73, blue: 0.45).opacity(0.72)
-    case 3: return Color(red: 0.16, green: 0.62, blue: 0.36)
-    case 4: return Color(red: 0.08, green: 0.43, blue: 0.24)
-    default: return Color.white.opacity(0.10)
-    }
   }
 }
 

@@ -146,7 +146,7 @@ private struct TempoRuntimeChrome: View {
           .contentShape(Circle())
       }
       .buttonStyle(.plain)
-      .accessibilityLabel("搜索")
+      .accessibilityLabel(TempoL10n.string("搜索"))
 
       TextField(searchPlaceholder, text: $searchText)
         .font(.system(size: 16, weight: .medium))
@@ -170,7 +170,7 @@ private struct TempoRuntimeChrome: View {
       .buttonStyle(.plain)
       .disabled(!searchExpanded)
       .opacity(searchExpanded ? 1 : 0)
-      .accessibilityLabel("关闭搜索")
+      .accessibilityLabel(TempoL10n.string("关闭搜索"))
     }
     .frame(width: searchExpanded ? searchExpandedWidth : 48, height: 48)
     .clipped()
@@ -184,10 +184,10 @@ private struct TempoRuntimeChrome: View {
 
   private var searchPlaceholder: String {
     switch route {
-    case .inbox: "搜索收集箱"
-    case .today: "搜索这一天"
-    case .rss: "搜索标题、来源或摘要"
-    default: "搜索"
+    case .inbox: TempoL10n.string("搜索收集箱")
+    case .today: TempoL10n.string("搜索这一天")
+    case .rss: TempoL10n.string("搜索标题、来源或摘要")
+    default: TempoL10n.string("搜索")
     }
   }
 
@@ -225,7 +225,7 @@ private struct TempoRuntimeChrome: View {
     }
     .buttonStyle(.plain)
     .tempoFloatingSurface()
-    .accessibilityLabel(command == "search" ? "搜索" : command == "statistics" ? "专注统计" : "更多")
+    .accessibilityLabel(TempoL10n.string(command == "search" ? "搜索" : command == "statistics" ? "专注统计" : "更多"))
   }
 
   private var optionsMenu: some View {
@@ -267,14 +267,14 @@ private struct TempoRuntimeChrome: View {
     }
     .buttonStyle(.plain)
     .tempoFloatingSurface()
-    .accessibilityLabel("更多")
+    .accessibilityLabel(TempoL10n.string("更多"))
   }
 
   private func commandButton(_ title: String, symbol: String, command: String) -> some View {
     Button {
       send(command)
     } label: {
-      Label(title, systemImage: symbol)
+      Label(TempoL10n.string(title), systemImage: symbol)
     }
   }
 

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { NativeTimerDirectionControl } from '../components/NativeControls';
 import { Pill, Screen, Sheet } from '../components/Primitives';
+import { t } from '../i18n';
 import type { TempoTheme } from '../theme';
 import type { PomodoroState, TempoCommand } from '../types';
 
@@ -32,20 +33,20 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
       </View>
       <View style={styles.timerBody}>
         <Pressable onPress={() => setStatistics(true)} style={({ pressed }) => pressed && styles.pressed}><Text style={[styles.mode, { color: theme.text }]}>{modeTitle(state.mode)}  <Text style={{ color: theme.tertiary }}>›</Text></Text></Pressable>
-        <View style={styles.ringGap}><ProgressRing theme={theme} progress={progress}><Text style={[styles.time, { color: theme.text }]}>{formatTime(remaining)}</Text><Text style={[styles.status, { color: theme.secondary }]}>{state.status === 'running' ? '专注进行中' : state.status === 'paused' ? '已暂停' : `今日 ${state.completedFocusSessions} / ${state.dailyFocusGoal}`}</Text></ProgressRing></View>
+        <View style={styles.ringGap}><ProgressRing theme={theme} progress={progress}><Text style={[styles.time, { color: theme.text }]}>{formatTime(remaining)}</Text><Text style={[styles.status, { color: theme.secondary }]}>{state.status === 'running' ? t('focus.running') : state.status === 'paused' ? t('focus.paused') : t('focus.todayProgress', { completed: state.completedFocusSessions, goal: state.dailyFocusGoal })}</Text></ProgressRing></View>
         {state.status === 'idle' ? (
-          <Pressable onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.startButton, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}><Text style={styles.startText}>开始</Text></Pressable>
+          <Pressable onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.startButton, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}><Text style={styles.startText}>{t('focus.start')}</Text></Pressable>
         ) : (
-          <View style={styles.controls}><RoundButton theme={theme} label={state.status === 'paused' ? '■' : '↻'} accessibilityLabel={state.status === 'paused' ? '结束计时' : '重新计时'} onPress={() => perform(state.status === 'paused' ? 'pomodoro.stop' : 'pomodoro.reset')} /><Pressable accessibilityRole="button" accessibilityLabel={state.status === 'running' ? '暂停计时' : '继续计时'} onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.mainButton, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}><Text style={styles.mainButtonText}>{state.status === 'running' ? 'Ⅱ' : '▶'}</Text></Pressable><RoundButton theme={theme} label={state.status === 'paused' ? '↻' : '■'} accessibilityLabel={state.status === 'paused' ? '重新计时' : '结束计时'} onPress={() => perform(state.status === 'paused' ? 'pomodoro.reset' : 'pomodoro.stop')} /></View>
+          <View style={styles.controls}><RoundButton theme={theme} label={state.status === 'paused' ? '■' : '↻'} accessibilityLabel={state.status === 'paused' ? t('focus.stopTimer') : t('focus.resetTimer')} onPress={() => perform(state.status === 'paused' ? 'pomodoro.stop' : 'pomodoro.reset')} /><Pressable accessibilityRole="button" accessibilityLabel={state.status === 'running' ? t('focus.pauseTimer') : t('focus.resumeTimer')} onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.mainButton, { backgroundColor: theme.accent, opacity: pressed ? .78 : 1 }]}><Text style={styles.mainButtonText}>{state.status === 'running' ? 'Ⅱ' : '▶'}</Text></Pressable><RoundButton theme={theme} label={state.status === 'paused' ? '↻' : '■'} accessibilityLabel={state.status === 'paused' ? t('focus.resetTimer') : t('focus.stopTimer')} onPress={() => perform(state.status === 'paused' ? 'pomodoro.reset' : 'pomodoro.stop')} /></View>
         )}
       </View>
       <Sheet visible={statistics} onClose={() => setStatistics(false)} theme={theme} snapPoints={['78%', '94%']}>
         <ScrollView contentContainerStyle={styles.stats}>
-          <Text style={[styles.statsTitle, { color: theme.text }]}>专注统计</Text>
-          <View style={styles.metrics}><Metric theme={theme} label="今日番茄" value={`${state.completedFocusSessions}`} /><Metric theme={theme} label="今日目标" value={`${state.dailyFocusGoal}`} /><Metric theme={theme} label="总专注" value={`${Math.round(state.focusHistory.reduce((sum, item) => sum + item.durationSeconds, 0) / 3600)}h`} /></View>
-          <Text style={[styles.heatTitle, { color: theme.text }]}>专注热力图</Text><Heatmap theme={theme} history={state.focusHistory} />
-          <Text style={[styles.heatTitle, { color: theme.text }]}>时长</Text><View style={styles.pills}>{[25, 35, 45, 60].map((minutes) => <Pill key={minutes} theme={theme} label={`${minutes} 分钟`} selected={state.focusMinutes === minutes} onPress={() => perform('pomodoro.settings', { focus: minutes })} />)}</View>
-          <Text style={[styles.heatTitle, { color: theme.text }]}>今日目标</Text><View style={styles.pills}>{[2, 4, 6, 8].map((count) => <Pill key={count} theme={theme} label={`${count} 个`} selected={state.dailyFocusGoal === count} onPress={() => perform('pomodoro.settings', { dailyFocusGoal: count })} />)}</View>
+          <Text style={[styles.statsTitle, { color: theme.text }]}>{t('focus.statistics')}</Text>
+          <View style={styles.metrics}><Metric theme={theme} label={t('focus.todayPomodoros')} value={`${state.completedFocusSessions}`} /><Metric theme={theme} label={t('focus.todayGoal')} value={`${state.dailyFocusGoal}`} /><Metric theme={theme} label={t('focus.totalFocus')} value={t('focus.hours', { count: Math.round(state.focusHistory.reduce((sum, item) => sum + item.durationSeconds, 0) / 3600) })} /></View>
+          <Text style={[styles.heatTitle, { color: theme.text }]}>{t('focus.heatmap')}</Text><Heatmap theme={theme} history={state.focusHistory} />
+          <Text style={[styles.heatTitle, { color: theme.text }]}>{t('focus.duration')}</Text><View style={styles.pills}>{[25, 35, 45, 60].map((minutes) => <Pill key={minutes} theme={theme} label={t('focus.minutes', { count: minutes })} selected={state.focusMinutes === minutes} onPress={() => perform('pomodoro.settings', { focus: minutes })} />)}</View>
+          <Text style={[styles.heatTitle, { color: theme.text }]}>{t('focus.todayGoal')}</Text><View style={styles.pills}>{[2, 4, 6, 8].map((count) => <Pill key={count} theme={theme} label={t('focus.sessions', { count })} selected={state.dailyFocusGoal === count} onPress={() => perform('pomodoro.settings', { dailyFocusGoal: count })} />)}</View>
         </ScrollView>
       </Sheet>
     </Screen>
@@ -55,7 +56,7 @@ function ProgressRing({ theme, progress, children }: { theme: TempoTheme; progre
 function RoundButton({ theme, label, accessibilityLabel, onPress }: { theme: TempoTheme; label: string; accessibilityLabel: string; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [styles.roundButton, { backgroundColor: theme.surface, borderColor: theme.separator, opacity: pressed ? .62 : 1 }]}><Text style={[styles.roundLabel, { color: theme.secondary }]}>{label}</Text></Pressable>; }
 function Metric({ theme, label, value }: { theme: TempoTheme; label: string; value: string }) { return <View style={[styles.metric, { backgroundColor: theme.surface }]}><Text style={[styles.metricLabel, { color: theme.secondary }]}>{label}</Text><Text style={[styles.metricValue, { color: theme.accent }]}>{value}</Text></View>; }
 function Heatmap({ theme, history }: { theme: TempoTheme; history: PomodoroState['focusHistory'] }) { const values = useMemo(() => Array.from({ length: 98 }, (_, i) => history.filter((item) => sameDate(new Date(item.startedAt), addDays(new Date(), i - 97))).length), [history]); return <View style={styles.heatmap}>{values.map((value, index) => <View key={index} style={[styles.heatCell, { backgroundColor: value ? theme.accent : theme.surfaceMuted, opacity: value ? Math.min(1, .35 + value * .2) : 1 }]} />)}</View>; }
-function modeTitle(mode: PomodoroState['mode']) { return mode === 'focus' ? '专注' : mode === 'shortBreak' ? '短休息' : '长休息'; }
+function modeTitle(mode: PomodoroState['mode']) { return mode === 'focus' ? t('focus.focus') : mode === 'shortBreak' ? t('focus.shortBreak') : t('focus.longBreak'); }
 function formatTime(seconds: number) { const safe = Math.max(0, seconds); return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`; }
 function addDays(date: Date, count: number) { const result = new Date(date); result.setDate(result.getDate() + count); return result; }
 function sameDate(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }

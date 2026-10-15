@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 
 import { NativeChromeGap, PrimaryButton, Screen, Sheet } from '../components/Primitives';
+import { formatDate, t, weekdayLabels } from '../i18n';
 import type { TempoTheme } from '../theme';
 import type { TempoCommand, TempoTask } from '../types';
 
@@ -99,7 +100,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   return (
     <Screen theme={theme}>
       <View style={styles.flex}>
-        <NativeChromeGap title={searchActive ? undefined : route === 'today' ? '今天' : '收集箱'} theme={theme} />
+        <NativeChromeGap title={searchActive ? undefined : route === 'today' ? t('tasks.today') : t('tasks.inbox')} theme={theme} />
 
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
@@ -111,7 +112,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={shown.length ? (
               <View style={styles.groupHeader}>
-                <Text style={[styles.groupTitle, { color: theme.text }]}>{route === 'today' ? dayTitle(selectedDate) : query ? '搜索结果' : '待整理'}</Text>
+                <Text style={[styles.groupTitle, { color: theme.text }]}>{route === 'today' ? dayTitle(selectedDate) : query ? t('tasks.searchResults') : t('tasks.unorganized')}</Text>
                 <Text style={[styles.groupCount, { color: theme.secondary }]}>{shown.length}</Text>
               </View>
             ) : null}
@@ -133,35 +134,35 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
 
         {undo ? (
           <Pressable onPress={() => { perform('task.restore', { id: undo.id }); setUndo(undefined); }} style={[styles.undo, { backgroundColor: theme.text }]}>
-            <Text style={{ color: theme.background, fontWeight: '700' }}>↶  撤销删除</Text>
+            <Text style={{ color: theme.background, fontWeight: '700' }}>↶  {t('tasks.undoDelete')}</Text>
           </Pressable>
         ) : null}
       </View>
 
       <Sheet visible={composerVisible} onClose={closeComposer} theme={theme} snapPoints={['68%', '94%']}>
         <View style={styles.sheetBody}>
-          <Text style={[styles.sheetTitle, { color: theme.text }]}>{editing ? '编辑任务' : route === 'today' ? '安排任务' : '记到收集箱'}</Text>
+          <Text style={[styles.sheetTitle, { color: theme.text }]}>{editing ? t('tasks.edit') : route === 'today' ? t('tasks.schedule') : t('tasks.capture')}</Text>
           <TextInput
             autoFocus
             value={draftTitle}
             onChangeText={setDraftTitle}
             onSubmitEditing={saveTask}
             returnKeyType="next"
-            placeholder="准备做什么？"
+            placeholder={t('tasks.titlePlaceholder')}
             placeholderTextColor={theme.tertiary}
             style={[styles.titleInput, { color: theme.text, backgroundColor: theme.surface }]}
           />
           <TextInput
             value={draftNotes}
             onChangeText={setDraftNotes}
-            placeholder="补充说明（可选）"
+            placeholder={t('tasks.notesPlaceholder')}
             placeholderTextColor={theme.tertiary}
             multiline
             textAlignVertical="top"
             style={[styles.notesInput, { color: theme.text, backgroundColor: theme.surface }]}
           />
-          <Text style={[styles.destination, { color: theme.secondary }]}>{route === 'today' ? `将安排到 ${fullDate(selectedDate)}` : '保存后留在收集箱，之后再安排日期'}</Text>
-          <PrimaryButton theme={theme} label={editing ? '保存修改' : '添加任务'} onPress={saveTask} disabled={!draftTitle.trim()} />
+          <Text style={[styles.destination, { color: theme.secondary }]}>{route === 'today' ? t('tasks.scheduleDestination', { date: fullDate(selectedDate) }) : t('tasks.inboxDestination')}</Text>
+          <PrimaryButton theme={theme} label={editing ? t('tasks.saveChanges') : t('tasks.add')} onPress={saveTask} disabled={!draftTitle.trim()} />
         </View>
       </Sheet>
     </Screen>
@@ -199,7 +200,7 @@ function CalendarStrip({ theme, selected, onSelect, progress, expanded, onExpand
   const gridOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [-selectedRow * 42, 0] });
   return (
     <Animated.View style={[styles.calendar, { height, backgroundColor: theme.surface }]}>
-      <View style={styles.weekdayRow}>{['一', '二', '三', '四', '五', '六', '日'].map((day) => <Text key={day} style={[styles.weekday, { color: theme.secondary }]}>{day}</Text>)}</View>
+      <View style={styles.weekdayRow}>{weekdayLabels().map((day) => <Text key={day} style={[styles.weekday, { color: theme.secondary }]}>{day}</Text>)}</View>
       <Animated.View style={[styles.calendarGridViewport, { height: gridHeight }]}>
         <Animated.View style={{ transform: [{ translateY: gridOffset }] }}>
           {[0, 1, 2, 3, 4, 5].map((row) => <View key={row} style={styles.weekRow}>{days.slice(row * 7, row * 7 + 7).map((date) => <DateCell key={date.toISOString()} date={date} selected={sameDay(date, selected)} inCurrentMonth={date.getMonth() === selected.getMonth() && date.getFullYear() === selected.getFullYear()} theme={theme} onPress={() => onSelect(date)} />)}</View>)}
@@ -226,8 +227,8 @@ function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onResched
   return (
     <View style={styles.swipeWrap}>
       <View style={styles.actions}>
-        <Pressable onPress={() => onReschedule(addDays(new Date(), 1).toISOString())} style={[styles.action, { backgroundColor: theme.accent }]}><Text style={styles.actionText}>明天</Text></Pressable>
-        <Pressable onPress={onDelete} style={[styles.action, { backgroundColor: theme.danger }]}><Text style={styles.actionText}>删除</Text></Pressable>
+        <Pressable onPress={() => onReschedule(addDays(new Date(), 1).toISOString())} style={[styles.action, { backgroundColor: theme.accent }]}><Text style={styles.actionText}>{t('tasks.tomorrow')}</Text></Pressable>
+        <Pressable onPress={onDelete} style={[styles.action, { backgroundColor: theme.danger }]}><Text style={styles.actionText}>{t('tasks.delete')}</Text></Pressable>
       </View>
       <Animated.View {...pan.panHandlers} style={[styles.taskRow, { backgroundColor: theme.surface, transform: [{ translateX: x }] }]}>
         <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.secondary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
@@ -236,7 +237,7 @@ function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onResched
             <Text numberOfLines={2} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text>
             {task.notes ? <Text numberOfLines={2} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
           </View>
-          {task.startAt ? <Text style={[styles.taskDate, { color: theme.secondary }]}>{sameDay(task.startAt, new Date()) ? '今天' : shortDate(task.startAt)}</Text> : null}
+          {task.startAt ? <Text style={[styles.taskDate, { color: theme.secondary }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text> : null}
           <Text style={[styles.rowChevron, { color: theme.tertiary }]}>›</Text>
         </Pressable>
         {separated ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
@@ -246,15 +247,15 @@ function TaskRow({ task, theme, separated, onOpen, onToggle, onDelete, onResched
 }
 
 function EmptyState({ theme, route, searching }: { theme: TempoTheme; route: string; searching: boolean }) {
-  return <View style={styles.empty}><Text style={[styles.emptyIcon, { color: theme.tertiary }]}>{searching ? '⌕' : '✓'}</Text><Text style={[styles.emptyTitle, { color: theme.text }]}>{searching ? '没有匹配的任务' : route === 'today' ? '这一天没有任务' : '收集箱已经清空'}</Text><Text style={[styles.emptyBody, { color: theme.secondary }]}>{searching ? '换个关键词试试' : route === 'today' ? '留一点时间给自己' : '想到什么就先记下来'}</Text></View>;
+  return <View style={styles.empty}><Text style={[styles.emptyIcon, { color: theme.tertiary }]}>{searching ? '⌕' : '✓'}</Text><Text style={[styles.emptyTitle, { color: theme.text }]}>{searching ? t('tasks.noMatches') : route === 'today' ? t('tasks.noToday') : t('tasks.inboxEmpty')}</Text><Text style={[styles.emptyBody, { color: theme.secondary }]}>{searching ? t('tasks.tryAnotherSearch') : route === 'today' ? t('tasks.timeForYourself') : t('tasks.captureAnything')}</Text></View>;
 }
 
 function sameDay(value: string | Date | null | undefined, compare: Date) { if (!value) return false; const date = typeof value === 'string' ? new Date(value) : value; return date.getFullYear() === compare.getFullYear() && date.getMonth() === compare.getMonth() && date.getDate() === compare.getDate(); }
 function addDays(date: Date, count: number) { const result = new Date(date); result.setDate(result.getDate() + count); return result; }
 function startOfWeek(date: Date) { return addDays(date, -((date.getDay() + 6) % 7)); }
-function dayTitle(date: Date) { const today = new Date(); if (sameDay(date, today)) return '今天'; if (sameDay(date, addDays(today, -1))) return '昨天'; if (sameDay(date, addDays(today, 1))) return '明天'; return `${date.getMonth() + 1}月${date.getDate()}日`; }
-function fullDate(date: Date) { const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']; return `${date.getMonth() + 1}月${date.getDate()}日  ${weekdays[date.getDay()]}`; }
-function shortDate(value: string) { const date = new Date(value); return `${date.getMonth() + 1}/${date.getDate()}`; }
+function dayTitle(date: Date) { const today = new Date(); if (sameDay(date, today)) return t('tasks.today'); if (sameDay(date, addDays(today, -1))) return t('tasks.yesterday'); if (sameDay(date, addDays(today, 1))) return t('tasks.tomorrow'); return formatDate(date, { month: 'long', day: 'numeric' }); }
+function fullDate(date: Date) { return formatDate(date, { month: 'long', day: 'numeric', weekday: 'long' }); }
+function shortDate(value: string) { return formatDate(value, { month: 'numeric', day: 'numeric' }); }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },

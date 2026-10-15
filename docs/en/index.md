@@ -21,7 +21,7 @@ Tempo works offline. Sync and AI features are optional, and you can host the syn
 | Configure clients and integrations | [Configuration](/en/CONFIGURATION) |
 | Download the latest build | [GitHub Releases](https://github.com/FelixZoe/TEMPO/releases/latest) |
 
-Install the file whose name matches your platform. Releases are platform-specific, so the newest release may not contain builds for every platform. The in-app **Settings → Software update** page automatically finds the latest compatible build for the current device.
+Install the file whose name matches your platform. Releases are platform-specific, so the newest release may not contain builds for every platform. The in-app **Settings → About Tempo** page automatically finds the latest compatible build for the current device.
 
 The public iOS IPA is unsigned. Sign it locally with your own Apple identity and keep the main app, widget extension, and App Group entitlements intact.
 

@@ -2,6 +2,7 @@ import * as Updates from 'expo-updates';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Divider, Row, Section } from '../components/Primitives';
+import { formatDate, t } from '../i18n';
 import type { TempoTheme } from '../theme';
 import type { TempoSnapshot } from '../types';
 
@@ -9,8 +10,10 @@ type Props = { theme: TempoTheme; snapshot: TempoSnapshot };
 
 export function DeveloperToolsContent({ theme, snapshot }: Props) {
   const sync = snapshot.sync;
-  const updateID = Updates.updateId ?? '内置版本';
-  const createdAt = Updates.createdAt ? formatDate(Updates.createdAt) : '—';
+  const updateID = Updates.updateId ?? t('dev.embeddedVersion');
+  const createdAt = Updates.createdAt
+    ? formatDate(Updates.createdAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : t('common.notAvailable');
 
   return (
     <ScrollView
@@ -19,55 +22,52 @@ export function DeveloperToolsContent({ theme, snapshot }: Props) {
       keyboardDismissMode="interactive"
       contentContainerStyle={styles.content}
     >
-      <Text style={[styles.intro, { color: theme.secondary }]}>当前运行信息会随 OTA 内容层同步更新。</Text>
+      <Text style={[styles.intro, { color: theme.secondary }]}>{t('dev.intro')}</Text>
 
-      <Section theme={theme} title="OTA 内容层">
-        <Row theme={theme} title="运行时版本" detail={Updates.runtimeVersion ?? '—'} />
+      <Section theme={theme} title={t('dev.otaLayer')}>
+        <Row theme={theme} title={t('dev.runtimeVersion')} detail={Updates.runtimeVersion ?? t('common.notAvailable')} />
         <Divider theme={theme} />
-        <Row theme={theme} title="更新通道" detail={Updates.channel ?? 'production'} />
+        <Row theme={theme} title={t('dev.channel')} detail={Updates.channel ?? 'production'} />
         <Divider theme={theme} />
-        <Row theme={theme} title="当前来源" detail={Updates.isEmbeddedLaunch ? '安装包内置' : 'OTA 更新'} />
+        <Row theme={theme} title={t('dev.source')} detail={Updates.isEmbeddedLaunch ? t('dev.embeddedSource') : t('dev.otaSource')} />
         <Divider theme={theme} />
         <View style={styles.valueRow}>
-          <Text style={[styles.valueTitle, { color: theme.text }]}>更新 ID</Text>
+          <Text style={[styles.valueTitle, { color: theme.text }]}>{t('dev.updateID')}</Text>
           <Text selectable numberOfLines={2} style={[styles.valueDetail, { color: theme.secondary }]}>{updateID}</Text>
         </View>
         <Divider theme={theme} />
-        <Row theme={theme} title="发布时间" detail={createdAt} />
+        <Row theme={theme} title={t('dev.publishedAt')} detail={createdAt} />
       </Section>
 
-      <Section theme={theme} title="应用">
-        <Row theme={theme} title="应用版本" detail={`v${snapshot.app?.version ?? '—'}`} />
+      <Section theme={theme} title={t('dev.app')}>
+        <Row theme={theme} title={t('dev.appVersion')} detail={`v${snapshot.app?.version ?? t('common.notAvailable')}`} />
         <Divider theme={theme} />
-        <Row theme={theme} title="构建号" detail={snapshot.app?.build ?? '—'} />
+        <Row theme={theme} title={t('dev.build')} detail={snapshot.app?.build ?? t('common.notAvailable')} />
         <Divider theme={theme} />
-        <Row theme={theme} title="自动更新" detail={Updates.isEnabled ? '启动时自动检查' : '当前不可用'} />
+        <Row theme={theme} title={t('dev.automaticUpdates')} detail={Updates.isEnabled ? t('dev.checkOnLaunch') : t('dev.unavailable')} />
       </Section>
 
-      <Section theme={theme} title="同步诊断">
-        <Row theme={theme} title="状态" detail={syncLabel(sync?.phase, sync?.pendingChangeCount ?? 0)} />
+      <Section theme={theme} title={t('dev.syncDiagnostics')}>
+        <Row theme={theme} title={t('dev.status')} detail={syncLabel(sync?.phase, sync?.pendingChangeCount ?? 0)} />
         <Divider theme={theme} />
         <Row theme={theme} title="Revision" detail={`${sync?.revision ?? 0}`} />
         <Divider theme={theme} />
-        <Row theme={theme} title="待上传修改" detail={`${sync?.pendingChangeCount ?? 0}`} />
+        <Row theme={theme} title={t('dev.pendingUploads')} detail={`${sync?.pendingChangeCount ?? 0}`} />
         <Divider theme={theme} />
-        <Row theme={theme} title="自动同步" detail={sync?.autoSync ? '开启' : '关闭'} />
+        <Row theme={theme} title={t('dev.autoSync')} detail={sync?.autoSync ? t('common.enabled') : t('common.disabled')} />
       </Section>
 
-      <Text style={[styles.note, { color: theme.tertiary }]}>OTA 在启动时自动检查并应用；此处不会提供手动更新按钮，也不会显示或导出同步密钥、AI 密钥及其他敏感信息。</Text>
+      <Text style={[styles.note, { color: theme.tertiary }]}>{t('dev.note')}</Text>
     </ScrollView>
   );
 }
 
 function syncLabel(phase?: string, pending = 0) {
-  if (pending) return `${pending} 项待同步`;
-  if (phase === 'syncing' || phase === '正在同步') return '正在同步';
-  if (phase === 'error' || phase === '同步异常') return '同步异常';
-  return phase || '已实时同步';
-}
-
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(value);
+  if (pending) return t('sync.pending', { count: pending });
+  if (phase === 'syncing' || phase === '正在同步') return t('sync.syncing');
+  if (phase === 'error' || phase === '同步异常') return t('sync.error');
+  if (!phase || phase === '已实时同步') return t('sync.current');
+  return phase;
 }
 
 const styles = StyleSheet.create({

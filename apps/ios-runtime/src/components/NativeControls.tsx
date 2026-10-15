@@ -2,6 +2,8 @@ import type { ComponentProps } from 'react';
 import { Host, Image, Picker, Text } from '@expo/ui/swift-ui';
 import { frame, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 
+import { t } from '../i18n';
+
 type TimerDirection = 'countdown' | 'countUp';
 export type NativeSymbolName = NonNullable<ComponentProps<typeof Image>['systemName']>;
 
@@ -30,8 +32,8 @@ export function NativeTimerDirectionControl({ value, onChange }: {
         }}
         modifiers={[pickerStyle('segmented'), frame({ maxWidth: 1000 })]}
       >
-        <Text modifiers={[tag('countdown')]}>番茄计时</Text>
-        <Text modifiers={[tag('countUp')]}>正计时</Text>
+        <Text modifiers={[tag('countdown')]}>{t('focus.pomodoroTimer')}</Text>
+        <Text modifiers={[tag('countUp')]}>{t('focus.stopwatch')}</Text>
       </Picker>
     </Host>
   );

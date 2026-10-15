@@ -75,9 +75,9 @@ enum RSSArticleFilter: String, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .unread: "未读"
-    case .all: "全部"
-    case .starred: "收藏"
+    case .unread: TempoL10n.string("未读")
+    case .all: TempoL10n.string("全部")
+    case .starred: TempoL10n.string("收藏")
     }
   }
 }

@@ -1,0 +1,47 @@
+/* Widget configuration */
+"Tempo页面" = "Tempo Page";
+"打开Tempo" = "Open Tempo";
+"页面" = "Page";
+"今天" = "Today";
+"番茄钟" = "Focus";
+"今日任务" = "Today's Tasks";
+"快速查看今天还剩多少项任务。" = "See how many tasks remain today.";
+"专注状态" = "Focus Status";
+"查看当前番茄钟，并快速回到专注页面。" = "Check the active timer and return to Focus.";
+"今日总览" = "Today Overview";
+"在一个简洁组件中查看任务与实时专注状态。" = "See today's tasks and live focus status at a glance.";
+"天气与一言" = "Weather & Quote";
+"安静地查看天气与每日一句。" = "See the weather and daily quote at a glance.";
+"专注热力图" = "Focus Heatmap";
+"以简洁热力图查看近十八周的专注节奏。" = "Review the last 18 weeks of focus activity.";
+
+/* Widget content */
+"今天已清空" = "All Clear Today";
+"项待办" = "tasks remaining";
+"还有 %d 项待办" = "%d tasks remaining";
+"今日 %d 项待办" = "%d tasks today";
+"给自己留一点轻松" = "Take a little time for yourself";
+"把今天真正重要的事做好。" = "Do what truly matters today.";
+"天气待刷新" = "Weather Not Updated";
+"近 18 周" = "Last 18 Weeks";
+"实时计时中" = "Timer Running";
+"已暂停" = "Paused";
+"准备开始" = "Ready";
+"正在同步计时" = "Syncing Timer";
+"准备下一次专注" = "Ready for the Next Session";
+"今日已完成 %d 次" = "%d completed today";
+"目标 %d 次" = "Goal %d";
+
+/* Live Activity */
+"专注" = "Focus";
+"休息" = "Break";
+"短暂休息" = "Short Break";
+"长休息" = "Long Break";
+"番茄计时" = "Pomodoro";
+"正计时" = "Count Up";
+"今日目标已完成" = "Daily goal complete";
+"还差 %d 次" = "%d remaining";
+"还差 %lld 次" = "%lld remaining";
+"今日专注进度" = "Today's focus progress";
+"今日 %d/%d" = "Today %d/%d";
+"今日 %lld/%lld" = "Today %lld/%lld";

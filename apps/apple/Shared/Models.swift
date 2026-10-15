@@ -15,9 +15,9 @@ enum TaskPriority: String, Codable, CaseIterable, Hashable, Identifiable {
 
   var title: String {
     switch self {
-    case .high: "高优先级"
-    case .medium: "中优先级"
-    case .low: "低优先级"
+    case .high: TempoL10n.string("高优先级")
+    case .medium: TempoL10n.string("中优先级")
+    case .low: TempoL10n.string("低优先级")
     }
   }
 
@@ -49,9 +49,9 @@ enum PomodoroMode: String, Codable, CaseIterable {
 
   var title: String {
     switch self {
-    case .focus: "专注"
-    case .shortBreak: "短休息"
-    case .longBreak: "长休息"
+    case .focus: TempoL10n.string("专注")
+    case .shortBreak: TempoL10n.string("短休息")
+    case .longBreak: TempoL10n.string("长休息")
     }
   }
 }
@@ -67,7 +67,7 @@ enum PomodoroTimerDirection: String, Codable, CaseIterable, Identifiable {
   case countUp
 
   var id: String { rawValue }
-  var title: String { self == .countdown ? "番茄计时" : "正计时" }
+  var title: String { TempoL10n.string(self == .countdown ? "番茄计时" : "正计时") }
 }
 
 struct FocusSessionRecord: Codable, Equatable, Identifiable {
@@ -295,10 +295,10 @@ enum AIConnectionMode: String, Codable, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .selfHosted: "Tempo自托管"
+    case .selfHosted: TempoL10n.string("Tempo自托管")
     case .openAI: "OpenAI"
     case .deepSeek: "DeepSeek"
-    case .compatible: "自定义服务"
+    case .compatible: TempoL10n.string("自定义服务")
     }
   }
 
@@ -388,11 +388,11 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
 
   var title: String {
     switch self {
-    case .inbox: "收集箱"
-    case .today: "今天"
-    case .pomodoro: "番茄钟"
+    case .inbox: TempoL10n.string("收集箱")
+    case .today: TempoL10n.string("今天")
+    case .pomodoro: TempoL10n.string("番茄钟")
     case .rss: "RSS"
-    case .settings: "设置"
+    case .settings: TempoL10n.string("设置")
     }
   }
 

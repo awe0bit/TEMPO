@@ -271,9 +271,9 @@ private enum FocusStatisticsRange: String, CaseIterable, Identifiable {
   var id: String { rawValue }
   var title: String {
     switch self {
-    case .week: "周"
-    case .month: "月"
-    case .year: "年"
+    case .week: TempoL10n.string("周")
+    case .month: TempoL10n.string("月")
+    case .year: TempoL10n.string("年")
     }
   }
 }

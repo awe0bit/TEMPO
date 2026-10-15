@@ -1,6 +1,7 @@
 name: TempoApple
 options:
   minimumXcodeGenVersion: 2.42.0
+  developmentLanguage: zh-Hans
   deploymentTarget:
     iOS: "17.0"
     macOS: "15.0"
@@ -25,6 +26,8 @@ targets:
       - path: ../flutter/ios/Shared/TempoPomodoroAttributes.swift
       - path: ../flutter/ios/Runner/Assets.xcassets
         buildPhase: resources
+      - path: Resources/MainApp
+        buildPhase: resources
     dependencies:
       - target: TempoWidgets
         embed: true
@@ -46,6 +49,10 @@ targets:
       path: Generated/TempoiOS-Info.plist
       properties:
         CFBundleDisplayName: Tempo
+        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleLocalizations:
+          - zh-Hans
+          - en
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen:
@@ -76,6 +83,8 @@ targets:
     sources:
       - path: ../flutter/ios/TempoWidgets/TempoWidgets.swift
       - path: ../flutter/ios/Shared/TempoPomodoroAttributes.swift
+      - path: Resources/Widgets
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: one.darker.qingxu.widgets
@@ -90,6 +99,10 @@ targets:
       path: Configuration/TempoWidgets-Info.plist
       properties:
         CFBundleDisplayName: Tempo小组件
+        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleLocalizations:
+          - zh-Hans
+          - en
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:

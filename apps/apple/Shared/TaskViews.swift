@@ -4,9 +4,9 @@ enum TaskScope {
   case inbox
   case today
 
-  var title: String { self == .inbox ? "收集箱" : "今天" }
-  var emptyTitle: String { self == .inbox ? "收集箱已清空" : "今天没有任务" }
-  var emptyDetail: String { self == .inbox ? "随时记录任务和想法" : "留一点时间给自己" }
+  var title: String { TempoL10n.string(self == .inbox ? "收集箱" : "今天") }
+  var emptyTitle: String { TempoL10n.string(self == .inbox ? "收集箱已清空" : "今天没有任务") }
+  var emptyDetail: String { TempoL10n.string(self == .inbox ? "随时记录任务和想法" : "留一点时间给自己") }
   var symbol: String { self == .inbox ? "tray" : "calendar" }
 }
 

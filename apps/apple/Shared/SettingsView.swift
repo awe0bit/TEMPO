@@ -199,20 +199,19 @@ struct SettingsScreen: View {
                 iconTint: .purple
               )
             }
-            #if os(iOS)
-            SettingsDivider()
-            NavigationLink { AppUpdateSettingsView().environmentObject(updateChecker).tempoSettingsDestination() } label: {
-              SettingsHomeRow(
-                symbol: "arrow.down.circle",
-                title: "软件更新",
-                value: updateDetail,
-                iconTint: .green
-              )
-            }
-            #endif
           }
 
           SettingsHomeGroup(title: "关于") {
+            #if os(iOS)
+            NavigationLink { AboutTempoView().environmentObject(updateChecker).tempoSettingsDestination() } label: {
+              SettingsHomeRow(
+                symbol: "info.circle",
+                title: "关于 Tempo",
+                value: "v\(updateChecker.currentVersion)",
+                iconTint: .gray
+              )
+            }
+            #else
             Link(destination: URL(string: "https://github.com/FelixZoe/TEMPO")!) {
               SettingsHomeRow(
                 symbol: "chevron.left.forwardslash.chevron.right",
@@ -222,6 +221,7 @@ struct SettingsScreen: View {
                 iconTint: .gray
               )
             }
+            #endif
           }
         }
         .padding(.horizontal, 18)
@@ -233,23 +233,8 @@ struct SettingsScreen: View {
       #if os(iOS)
       .navigationBarTitleDisplayMode(.inline)
       #endif
-      #if os(iOS)
-      .task { await updateChecker.check() }
-      #endif
     }
   }
-
-  #if os(iOS)
-  private var updateDetail: String {
-    switch updateChecker.state {
-    case .checking: return "正在检查"
-    case .available(let release): return "v\(release.version)"
-    case .current: return "已是最新"
-    case .failed: return "检查失败"
-    case .idle: return "检查更新"
-    }
-  }
-  #endif
 
   private var aiDetail: String {
     guard store.aiSettings.isConfigured(syncSettings: store.syncSettings) else {
@@ -338,7 +323,7 @@ private struct SettingsHomeRow: View {
 }
 
 #if os(iOS)
-private struct AppUpdateSettingsView: View {
+private struct AboutTempoView: View {
   @EnvironmentObject private var updateChecker: AppUpdateChecker
   @Environment(\.openURL) private var openURL
 
@@ -349,11 +334,13 @@ private struct AppUpdateSettingsView: View {
           HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 5) {
               Text("Tempo").font(.title2.weight(.semibold))
-              Text("v\(updateChecker.currentVersion) · 构建 \(updateChecker.currentBuild)")
+              Text("本地优先个人工作台")
                 .font(.subheadline).foregroundStyle(TempoPalette.quiet)
+              Text("v\(updateChecker.currentVersion) · 构建 \(updateChecker.currentBuild)")
+                .font(.caption).foregroundStyle(TempoPalette.faint)
             }
             Spacer()
-            Image(systemName: "checkmark.seal")
+            Image(systemName: "info.circle")
               .font(.title2).foregroundStyle(TempoPalette.accent)
           }
           updateStatus
@@ -391,11 +378,22 @@ private struct AppUpdateSettingsView: View {
         Text("覆盖安装需保持应用标识与签名身份一致。下载后直接用同一 Apple ID 或证书重新签名安装，任务和本机设置会保留。")
           .font(.footnote).foregroundStyle(TempoPalette.quiet)
           .frame(maxWidth: .infinity, alignment: .leading)
+
+        Link(destination: URL(string: "https://github.com/awe0bit/TEMPO")!) {
+          SettingsHomeRow(
+            symbol: "chevron.left.forwardslash.chevron.right",
+            title: "项目、文档与下载",
+            value: "GitHub",
+            accessorySymbol: "arrow.up.right",
+            iconTint: .gray
+          )
+        }
+        .background(TempoPalette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
       }
       .padding(18).padding(.bottom, 80)
     }
     .tempoScreen()
-    .navigationTitle("软件更新")
+    .navigationTitle("关于 Tempo")
     .navigationBarTitleDisplayMode(.inline)
     .task { await updateChecker.check() }
   }

@@ -111,12 +111,12 @@ private struct iOSRootView: View {
     }
     .alert(item: $availableUpdate) { release in
       Alert(
-        title: Text("发现新版本 v\(release.version)"),
+        title: Text(TempoL10n.format("发现新版本 v%@", release.version)),
         message: Text(updateMessage(release)),
-        primaryButton: .default(Text("直接下载")) {
+        primaryButton: .default(Text(TempoL10n.string("直接下载"))) {
           openURL(release.iOSAsset?.browserDownloadURL ?? release.htmlURL)
         },
-        secondaryButton: .cancel(Text("稍后"))
+        secondaryButton: .cancel(Text(TempoL10n.string("稍后")))
       )
     }
     .onReceive(NotificationCenter.default.publisher(for: .tempoOpenDeveloperTools)) { _ in
@@ -164,7 +164,7 @@ private struct iOSRootView: View {
 
   private func updateMessage(_ release: TempoRelease) -> String {
     let notes = release.body.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !notes.isEmpty else { return "新版本已经发布，可前往 GitHub 下载 IPA。" }
+    guard !notes.isEmpty else { return TempoL10n.string("新版本已经发布，可前往 GitHub 下载 IPA。") }
     return String(notes.prefix(240))
   }
 }

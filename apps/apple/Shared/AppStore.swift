@@ -9,10 +9,10 @@ enum SyncPhase: Equatable {
 
   var title: String {
     switch self {
-    case .localOnly: "仅保存在本地"
-    case .syncing: "正在同步…"
-    case .synced: "已同步"
-    case .failed: "同步失败"
+    case .localOnly: TempoL10n.string("仅保存在本地")
+    case .syncing: TempoL10n.string("正在同步…")
+    case .synced: TempoL10n.string("已同步")
+    case .failed: TempoL10n.string("同步失败")
     }
   }
 }

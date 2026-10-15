@@ -100,38 +100,6 @@ export default defineConfig({
           copyright: 'Tempo'
         }
       }
-    },
-    'zh-TW': {
-      label: '繁體中文',
-      lang: 'zh-TW',
-      title: 'Tempo 文件',
-      description: 'Tempo 跨平台用戶端與自託管同步部署文件',
-      themeConfig: {
-        ...sharedTheme,
-        siteTitle: 'Tempo 文件',
-        nav: [
-          { text: '設定', link: '/zh-TW/CONFIGURATION' },
-          { text: '部署', link: '/zh-TW/DEPLOYMENT' },
-          { text: '下載', link: downloads }
-        ],
-        sidebar: [
-          {
-            text: '開始',
-            items: [
-              { text: '文件首頁', link: '/zh-TW/' },
-              { text: '完整設定指南', link: '/zh-TW/CONFIGURATION' },
-              { text: '自託管同步', link: '/zh-TW/DEPLOYMENT' }
-            ]
-          }
-        ],
-        outline: { level: 2, label: '本頁內容' },
-        lastUpdated: { text: '最後更新於' },
-        docFooter: { prev: '上一篇', next: '下一篇' },
-        footer: {
-          message: '個人、本機優先、自託管同步',
-          copyright: 'Tempo'
-        }
-      }
     }
   }
 })

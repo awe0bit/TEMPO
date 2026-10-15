@@ -11,6 +11,10 @@ This guide covers client-side setup after installation. Use the [deployment guid
 | Weather | Settings → Weather and quote | QWeather API Host, key, Location ID and display city |
 | RSS | RSS → Subscriptions | RSS/Atom URL and source group |
 
+## Language
+
+iOS supports Simplified Chinese and English and follows the system language by default. To override it only for Tempo, use **Settings → Tempo → Language**, then reopen the app. Tempo does not duplicate this system control inside the app.
+
 ## Sync clients
 
 Enter the same server base URL and token on every device, but use a different device name. Do not append `/v1/sync` to the URL. Save with “Verify, save and sync now”; this validates the server before credentials are persisted.
@@ -35,6 +39,6 @@ Use the project-specific QWeather API Host without a scheme or path, the matchin
 
 ## Secrets and updates
 
-Sync tokens, direct AI keys and weather keys never enter the sync document. Stable identifiers and signing identities are required for in-place iOS/Android upgrades. Use Settings → Software update to open the latest GitHub Release.
+Sync tokens, direct AI keys and weather keys never enter the sync document. Stable identifiers and signing identities are required for in-place iOS/Android upgrades. Use Settings → About Tempo to open the latest GitHub Release.
 
 For proxy, backup and container troubleshooting, continue with [self-hosted deployment](/en/DEPLOYMENT).

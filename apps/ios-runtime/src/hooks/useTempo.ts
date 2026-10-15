@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { t } from '../i18n';
 import { tempoNative } from '../native/TempoNative';
 import { makeTheme } from '../theme';
 import type { TempoCommand, TempoSnapshot } from '../types';
@@ -67,5 +68,5 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
 
 function messageOf(reason: unknown) {
   if (reason instanceof Error) return reason.message;
-  return String(reason ?? '操作失败，请稍后重试');
+  return String(reason ?? t('error.operationFailed'));
 }

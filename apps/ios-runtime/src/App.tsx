@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { Sheet } from './components/Primitives';
 import { useTempo } from './hooks/useTempo';
+import { setAppLocale, t } from './i18n';
 import { DeveloperToolsContent } from './screens/DeveloperToolsScreen';
 import { FocusScreen } from './screens/FocusScreen';
 import { RSSScreen } from './screens/RSSScreen';
@@ -17,6 +18,7 @@ type RuntimeProps = {
 };
 
 export default function App(props: RuntimeProps) {
+  setAppLocale(props.locale);
   const tempo = useTempo(props.route);
   const { snapshot, route, theme, error, clearError, command, consumeCommand } = tempo;
   const [developerToolsVisible, setDeveloperToolsVisible] = useState(false);
@@ -31,11 +33,11 @@ export default function App(props: RuntimeProps) {
     <View style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       {snapshot ? <RouteView tempo={tempo} /> : <View style={styles.loading}><ActivityIndicator color={theme.accent} /></View>}
-      {error ? <Pressable accessibilityRole="button" accessibilityLabel="关闭错误提示" onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
+      {error ? <Pressable accessibilityRole="button" accessibilityLabel={t('app.closeError')} onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
       {snapshot ? <Sheet visible={developerToolsVisible} onClose={() => setDeveloperToolsVisible(false)} theme={theme} snapPoints={['82%', '96%']}>
         <View style={styles.sheetHeader}>
-          <Text style={[styles.sheetTitle, { color: theme.text }]}>开发者工具</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="关闭开发者工具" onPress={() => setDeveloperToolsVisible(false)} style={({ pressed }) => [styles.sheetClose, { backgroundColor: theme.surfaceMuted, opacity: pressed ? .62 : 1 }]}>
+          <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('app.developerTools')}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('app.closeDeveloperTools')} onPress={() => setDeveloperToolsVisible(false)} style={({ pressed }) => [styles.sheetClose, { backgroundColor: theme.surfaceMuted, opacity: pressed ? .62 : 1 }]}>
             <Text style={[styles.sheetCloseText, { color: theme.secondary }]}>×</Text>
           </Pressable>
         </View>
