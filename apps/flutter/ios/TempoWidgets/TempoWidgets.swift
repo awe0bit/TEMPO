@@ -591,10 +591,14 @@ struct TempoLiveActivity: Widget {
             .background(TempoWidgetPalette.accent.opacity(0.16), in: Circle())
         }
         DynamicIslandExpandedRegion(.trailing) {
-          Text(todaySummary(context.state))
-            .font(.caption.weight(.semibold))
+          Text("\(context.state.todayCompleted)/\(context.state.dailyGoal)")
+            .font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)
             .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
+            .frame(width: 52, alignment: .trailing)
+            .accessibilityLabel(Text(todaySummary(context.state)))
         }
         DynamicIslandExpandedRegion(.center) {
           Text(modeTitle(context.state.mode))

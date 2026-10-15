@@ -114,7 +114,7 @@ private struct TempoRuntimeChrome: View {
 
         Spacer()
 
-        if route != .settings {
+        if route != .settings && route != .pomodoro {
           optionsMenu
             .allowsHitTesting(!searchExpanded)
         }
@@ -194,18 +194,15 @@ private struct TempoRuntimeChrome: View {
   private func openSearch() {
     withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
       searchExpanded = true
-    }
-    TempoNativeRegistry.shared.sendCommand("search", payload: ["query": searchText, "active": true])
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
-      guard searchExpanded else { return }
       searchFocused = true
     }
+    TempoNativeRegistry.shared.sendCommand("search", payload: ["query": searchText, "active": true])
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
 
   private func closeSearch() {
-    searchFocused = false
     withAnimation(.smooth(duration: 0.24, extraBounce: 0)) {
+      searchFocused = false
       searchExpanded = false
     }
     searchText = ""
@@ -243,13 +240,7 @@ private struct TempoRuntimeChrome: View {
         commandButton("显示已完成", symbol: "checkmark.circle", command: "showCompleted")
         commandButton("隐藏已完成", symbol: "circle", command: "hideCompleted")
       case .pomodoro:
-        commandButton("专注统计", symbol: "chart.xyaxis.line", command: "statistics")
-        commandButton("重新计时", symbol: "arrow.counterclockwise", command: "resetTimer")
-        Button(role: .destructive) {
-          send("stopTimer")
-        } label: {
-          Label("结束本次计时", systemImage: "stop.fill")
-        }
+        EmptyView()
       case .rss:
         commandButton("添加订阅", symbol: "plus.circle", command: "addFeed")
         commandButton("刷新全部", symbol: "arrow.clockwise", command: "refreshFeeds")

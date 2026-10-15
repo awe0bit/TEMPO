@@ -167,12 +167,15 @@ final class TempoNativeRegistry {
       return ["ok": true]
 
     case "pomodoro.toggle":
+      pomodoroFeedback()
       store.togglePomodoro()
       return ["ok": true]
     case "pomodoro.reset":
+      pomodoroFeedback()
       store.resetPomodoro()
       return ["ok": true]
     case "pomodoro.stop":
+      pomodoroFeedback()
       store.stopPomodoro()
       return ["ok": true]
     case "pomodoro.mode":
@@ -185,6 +188,7 @@ final class TempoNativeRegistry {
       guard let direction = PomodoroTimerDirection(rawValue: payload.string("direction")) else {
         throw BridgeError.invalidPayload("计时方向无效")
       }
+      pomodoroFeedback()
       store.setPomodoroTimerDirection(direction)
       return ["ok": true]
     case "pomodoro.settings":
@@ -447,6 +451,14 @@ final class TempoNativeRegistry {
         "downloadURL": (release.iOSAsset?.browserDownloadURL ?? release.htmlURL).absoluteString,
       ]
     }
+  }
+
+  private func pomodoroFeedback() {
+    let defaults = UserDefaults.standard
+    guard defaults.object(forKey: TempoPreferenceKey.haptics) as? Bool ?? true else { return }
+    let feedback = UIImpactFeedbackGenerator(style: .soft)
+    feedback.prepare()
+    feedback.impactOccurred(intensity: 0.58)
   }
 
   private func preferenceKey(_ name: String) -> String {
