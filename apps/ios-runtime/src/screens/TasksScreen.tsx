@@ -23,6 +23,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [searchActive, setSearchActive] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [undo, setUndo] = useState<TempoTask>();
+  const [swipingTask, setSwipingTask] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
@@ -107,6 +108,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
         <View style={styles.listPanel}>
           <FlatList
             data={shown}
+            scrollEnabled={!swipingTask}
             keyExtractor={(item) => item.id}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
@@ -126,6 +128,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 onOpen={() => openComposer(item)}
                 onToggle={() => perform('task.toggle', { id: item.id })}
                 onDelete={() => remove(item)}
+                onSwipeActive={setSwipingTask}
               />
             )}
             contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
@@ -221,15 +224,20 @@ const DELETE_THRESHOLD = 72;
 const MAX_DELETE_DRAG = 180;
 const DELETE_EXIT_DISTANCE = 460;
 
-function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void }) {
+function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipeActive }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onSwipeActive: (active: boolean) => void }) {
   const x = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
   const deleting = useRef(false);
   const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 340, damping: 31, mass: .7 }).start();
   const deleteOpacity = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -10, 0], outputRange: [1, .2, 0], extrapolate: 'clamp' });
+  const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * .8;
   const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => gesture.dx < -7 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
-    onPanResponderGrant: () => x.stopAnimation((value) => { dragStart.current = value; }),
+    onMoveShouldSetPanResponder: wantsHorizontalSwipe,
+    onMoveShouldSetPanResponderCapture: wantsHorizontalSwipe,
+    onPanResponderGrant: () => {
+      onSwipeActive(true);
+      x.stopAnimation((value) => { dragStart.current = value; });
+    },
     onPanResponderMove: (_, gesture) => {
       let next = dragStart.current + gesture.dx;
       if (next > 0) next *= .12;
@@ -238,18 +246,20 @@ function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { tas
     },
     onPanResponderRelease: (_, gesture) => {
       const shouldDelete = gesture.dx <= -DELETE_THRESHOLD || (gesture.dx < -22 && gesture.vx < -.85);
-      if (!shouldDelete) { reset(); return; }
+      if (!shouldDelete) { onSwipeActive(false); reset(); return; }
       deleting.current = true;
       Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 170, useNativeDriver: true }).start(({ finished }) => {
+        onSwipeActive(false);
         if (!finished || !deleting.current) return;
         x.setValue(0);
         deleting.current = false;
         onDelete();
       });
     },
-    onPanResponderTerminate: () => { deleting.current = false; reset(); },
+    onPanResponderTerminate: () => { deleting.current = false; onSwipeActive(false); reset(); },
     onPanResponderTerminationRequest: () => false,
-  }), [onDelete, x]);
+    onShouldBlockNativeResponder: () => true,
+  }), [onDelete, onSwipeActive, x]);
   const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
     <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
