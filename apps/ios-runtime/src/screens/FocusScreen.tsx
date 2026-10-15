@@ -32,15 +32,11 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
         />
       </View>
       <View style={styles.timerBody}>
-        <ModeControl theme={theme} value={state.mode} disabled={state.status !== 'idle'} onChange={(mode) => void perform('pomodoro.mode', { mode })} />
-        <View style={[styles.timerStage, { backgroundColor: theme.surface }]}>
-          <ProgressRing theme={theme} progress={progress} running={state.status === 'running'}>
-            <Text style={[styles.mode, { color: theme.accent }]}>{modeTitle(state.mode)}</Text>
-            <Text style={[styles.time, { color: theme.text }]}>{formatTime(remaining)}</Text>
-            <Text style={[styles.status, { color: theme.secondary }]}>{state.status === 'running' ? t('focus.running') : state.status === 'paused' ? t('focus.paused') : t('focus.todayProgress', { completed: state.completedFocusSessions, goal: state.dailyFocusGoal })}</Text>
-            <SessionDots theme={theme} completed={state.completedFocusSessions} goal={state.dailyFocusGoal} />
-          </ProgressRing>
-        </View>
+        <TimerDial theme={theme} progress={progress}>
+          <Text style={[styles.mode, { color: theme.secondary }]}>{modeTitle(state.mode)}</Text>
+          <Text style={[styles.time, { color: theme.text }]}>{formatTime(remaining)}</Text>
+          <Text style={[styles.status, { color: theme.secondary }]}>{state.status === 'running' ? t('focus.running') : state.status === 'paused' ? t('focus.paused') : t('focus.todayProgress', { completed: state.completedFocusSessions, goal: state.dailyFocusGoal })}</Text>
+        </TimerDial>
         {state.status === 'idle' ? (
           <Pressable accessibilityRole="button" accessibilityLabel={t('focus.start')} onPress={() => perform('pomodoro.toggle')} style={({ pressed }) => [styles.startButton, { backgroundColor: theme.accent }, pressed && styles.buttonPressed]}><NativeSymbol name="play.fill" color="#FFFFFF" size={16} /><Text style={styles.startText}>{t('focus.start')}</Text></Pressable>
         ) : (
@@ -56,9 +52,7 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
     </Screen>
   );
 }
-function ModeControl({ theme, value, disabled, onChange }: { theme: TempoTheme; value: PomodoroState['mode']; disabled: boolean; onChange: (mode: PomodoroState['mode']) => void }) { const modes: PomodoroState['mode'][] = ['focus', 'shortBreak', 'longBreak']; return <View style={[styles.modeControl, { backgroundColor: theme.surfaceMuted, opacity: disabled ? .58 : 1 }]}>{modes.map((mode) => { const selected = mode === value; return <Pressable key={mode} disabled={disabled} accessibilityRole="button" accessibilityState={{ selected, disabled }} onPress={() => onChange(mode)} style={({ pressed }) => [styles.modeOption, selected && { backgroundColor: theme.surfaceElevated }, pressed && styles.modePressed]}><Text numberOfLines={1} style={[styles.modeOptionText, { color: selected ? theme.text : theme.secondary }]}>{modeTitle(mode)}</Text>{selected ? <View style={[styles.modeIndicator, { backgroundColor: theme.accent }]} /> : null}</Pressable>; })}</View>; }
-function ProgressRing({ theme, progress, running, children }: { theme: TempoTheme; progress: number; running: boolean; children: React.ReactNode }) { const count = 84; const active = Math.round(progress * count); return <View style={[styles.ring, { backgroundColor: theme.surfaceElevated, borderColor: theme.separator }]}>{Array.from({ length: count }, (_, index) => <View key={index} style={[styles.tick, { backgroundColor: index < active ? theme.accent : theme.tertiary, opacity: index < active ? 1 : .18, transform: [{ rotate: `${index * (360 / count)}deg` }, { translateY: -132 }] }]} />)}<View style={[styles.ringCore, { backgroundColor: theme.surface }]}><View style={[styles.liveDot, { backgroundColor: running ? theme.success : theme.tertiary }]} />{children}</View></View>; }
-function SessionDots({ theme, completed, goal }: { theme: TempoTheme; completed: number; goal: number }) { const count = Math.min(8, Math.max(1, goal)); return <View style={styles.sessionDots}>{Array.from({ length: count }, (_, index) => <View key={index} style={[styles.sessionDot, { backgroundColor: index < completed ? theme.accent : theme.separator }]} />)}</View>; }
+function TimerDial({ theme, progress, children }: { theme: TempoTheme; progress: number; children: React.ReactNode }) { const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`; return <View style={[styles.timerDial, { borderColor: theme.separator }]}>{children}<View style={[styles.dialTrack, { backgroundColor: theme.surfaceMuted }]}><View style={[styles.dialFill, { width: progressWidth, backgroundColor: theme.accent }]} /></View></View>; }
 function TimerActionButton({ theme, label, symbol, primary = false, onPress }: { theme: TempoTheme; label: string; symbol: NativeSymbolName; primary?: boolean; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.actionButton, { backgroundColor: primary ? theme.accent : theme.surface, borderColor: primary ? theme.accent : theme.separator }, pressed && styles.buttonPressed]}><NativeSymbol name={symbol} color={primary ? '#FFFFFF' : theme.secondary} size={15} /><Text numberOfLines={1} style={[styles.actionLabel, { color: primary ? '#FFFFFF' : theme.text }]}>{label}</Text></Pressable>; }
 function FocusStatistics({ theme, state, perform }: { theme: TempoTheme; state: PomodoroState; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T> }) {
   const completedHistory = state.focusHistory.filter((item) => item.completed);
@@ -103,22 +97,13 @@ function addDays(date: Date, count: number) { const result = new Date(date); res
 function sameDate(a: Date, b: Date) { return a.toDateString() === b.toDateString(); }
 const styles = StyleSheet.create({
   timerChrome: { height: 58, alignItems: 'center', justifyContent: 'center' },
-  timerBody: { flex: 1, alignItems: 'center', paddingTop: 12, paddingBottom: 18 },
-  modeControl: { width: 300, height: 42, borderRadius: 21, padding: 3, flexDirection: 'row' },
-  modeOption: { flex: 1, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  modeOptionText: { fontSize: 13, fontWeight: '600' },
-  modeIndicator: { position: 'absolute', bottom: 4, width: 14, height: 2, borderRadius: 1 },
-  modePressed: { opacity: .7, transform: [{ scale: .96 }] },
-  timerStage: { width: 326, height: 326, borderRadius: 163, alignItems: 'center', justifyContent: 'center', marginTop: 26, marginBottom: 28, shadowColor: '#000000', shadowOpacity: .08, shadowRadius: 24, shadowOffset: { width: 0, height: 12 } },
-  mode: { fontSize: 14, fontWeight: '700', letterSpacing: .2, marginBottom: 7 },
-  ring: { width: 294, height: 294, borderRadius: 147, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  tick: { position: 'absolute', left: 145.5, top: 140, width: 3, height: 14, borderRadius: 2 },
-  ringCore: { width: 238, height: 238, borderRadius: 119, alignItems: 'center', justifyContent: 'center' },
-  liveDot: { position: 'absolute', top: 22, width: 7, height: 7, borderRadius: 4 },
+  timerBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 26 },
+  timerDial: { width: 300, height: 300, borderRadius: 150, borderWidth: 5, alignItems: 'center', justifyContent: 'center', marginBottom: 44 },
+  mode: { fontSize: 14, fontWeight: '600', letterSpacing: .1, marginBottom: 8 },
   time: { fontSize: 61, lineHeight: 70, fontWeight: '500', letterSpacing: -2.2, fontVariant: ['tabular-nums'] },
   status: { fontSize: 14, marginTop: 5 },
-  sessionDots: { flexDirection: 'row', gap: 5, marginTop: 14 },
-  sessionDot: { width: 6, height: 6, borderRadius: 3 },
+  dialTrack: { width: 132, height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 18 },
+  dialFill: { height: 4, borderRadius: 2 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   actionButton: { width: 136, height: 54, borderRadius: 27, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   actionLabel: { maxWidth: 88, fontSize: 14, fontWeight: '600' },

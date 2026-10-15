@@ -217,47 +217,46 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : inCurrentMonth ? theme.text : theme.tertiary, opacity: selected || inCurrentMonth ? 1 : .48 }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
-const DELETE_ACTION_WIDTH = 92;
+const DELETE_THRESHOLD = 72;
+const MAX_DELETE_DRAG = 180;
+const DELETE_EXIT_DISTANCE = 460;
 
 function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void }) {
   const x = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
-  const opened = useRef(false);
-  const settle = (target: number, completion?: () => void) => {
-    opened.current = target !== 0;
-    Animated.spring(x, { toValue: target, useNativeDriver: true, stiffness: 320, damping: 30, mass: .72 }).start(({ finished }) => {
-      if (finished) completion?.();
-    });
-  };
+  const deleting = useRef(false);
+  const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 340, damping: 31, mass: .7 }).start();
+  const deleteOpacity = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -10, 0], outputRange: [1, .2, 0], extrapolate: 'clamp' });
   const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 7 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onMoveShouldSetPanResponder: (_, gesture) => gesture.dx < -7 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
     onPanResponderGrant: () => x.stopAnimation((value) => { dragStart.current = value; }),
     onPanResponderMove: (_, gesture) => {
       let next = dragStart.current + gesture.dx;
       if (next > 0) next *= .12;
-      if (next < -DELETE_ACTION_WIDTH) next = -DELETE_ACTION_WIDTH + (next + DELETE_ACTION_WIDTH) * .16;
+      if (next < -MAX_DELETE_DRAG) next = -MAX_DELETE_DRAG + (next + MAX_DELETE_DRAG) * .12;
       x.setValue(next);
     },
-    onPanResponderRelease: (_, gesture) => x.stopAnimation((value) => {
-      const projected = value + gesture.vx * 24;
-      settle(projected < -DELETE_ACTION_WIDTH * .48 ? -DELETE_ACTION_WIDTH : 0);
-    }),
-    onPanResponderTerminate: () => settle(0),
-    onPanResponderTerminationRequest: () => true,
-  }), [x]);
-  const closeOr = (action: () => void) => opened.current ? settle(0) : action();
-  const deleteTask = () => settle(-DELETE_ACTION_WIDTH, () => {
-    x.setValue(0);
-    opened.current = false;
-    onDelete();
-  });
+    onPanResponderRelease: (_, gesture) => {
+      const shouldDelete = gesture.dx <= -DELETE_THRESHOLD || (gesture.dx < -22 && gesture.vx < -.85);
+      if (!shouldDelete) { reset(); return; }
+      deleting.current = true;
+      Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 170, useNativeDriver: true }).start(({ finished }) => {
+        if (!finished || !deleting.current) return;
+        x.setValue(0);
+        deleting.current = false;
+        onDelete();
+      });
+    },
+    onPanResponderTerminate: () => { deleting.current = false; reset(); },
+    onPanResponderTerminationRequest: () => false,
+  }), [onDelete, x]);
   const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
-    <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.danger }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={deleteTask} style={styles.deleteAction}><Text style={styles.deleteIcon}>×</Text><Text style={styles.actionText}>{t('tasks.delete')}</Text></Pressable>
+    <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
+      <Animated.View pointerEvents="none" style={[styles.deleteAction, { backgroundColor: theme.danger, opacity: deleteOpacity }]}><Text style={styles.deleteIcon}>×</Text><Text style={styles.actionText}>{t('tasks.delete')}</Text></Animated.View>
       <Animated.View {...pan.panHandlers} style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface, transform: [{ translateX: x }] }]}>
-        <Pressable onPress={() => closeOr(onToggle)} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
-        <Pressable onPress={() => closeOr(onOpen)} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
+        <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
+        <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
           <View style={styles.taskText}>
             <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
             {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
@@ -303,7 +302,7 @@ const styles = StyleSheet.create({
   swipeWrap: { minHeight: 66, overflow: 'hidden' },
   groupTop: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   groupBottom: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  deleteAction: { position: 'absolute', top: 0, right: 0, bottom: 0, width: DELETE_ACTION_WIDTH, justifyContent: 'center', alignItems: 'center', gap: 1 },
+  deleteAction: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 24, gap: 1 },
   deleteIcon: { color: '#fff', fontSize: 21, lineHeight: 22, fontWeight: '300' },
   actionText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   taskRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
