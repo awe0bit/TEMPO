@@ -48,6 +48,7 @@ private struct iOSRootView: View {
   @State private var selection = AppTab.today
   @State private var showingLaunchExperience = true
   @State private var availableUpdate: TempoRelease?
+  @State private var runtimeNavigationDepth = 0
   @AppStorage(TempoPreferenceKey.appearance) private var appearance = "system"
   @AppStorage(TempoPreferenceKey.moduleOrder) private var moduleOrder = TempoModuleOrder.defaultValue
 
@@ -61,16 +62,20 @@ private struct iOSRootView: View {
         VStack(spacing: 0) {
           TempoRuntimeScreen(route: selection)
 
-          TempoNativeTabBar(
-            selection: $selection,
-            visibleTabs: visibleTabs
-          ) {
-            openDeveloperTools()
+          if runtimeNavigationDepth == 0 {
+            TempoNativeTabBar(
+              selection: $selection,
+              visibleTabs: visibleTabs
+            ) {
+              openDeveloperTools()
+            }
+            .frame(height: 49 + geometry.safeAreaInsets.bottom)
+            .disabled(showingLaunchExperience)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
           }
-          .frame(height: 49 + geometry.safeAreaInsets.bottom)
-          .disabled(showingLaunchExperience)
         }
         .ignoresSafeArea(edges: .bottom)
+        .animation(.smooth(duration: 0.24, extraBounce: 0), value: runtimeNavigationDepth)
 
         if showingLaunchExperience {
           TempoLaunchExperience {
@@ -83,6 +88,7 @@ private struct iOSRootView: View {
       }
     }
     .onChange(of: selection) { _ in
+      runtimeNavigationDepth = 0
       guard !showingLaunchExperience else { return }
       let feedback = UIImpactFeedbackGenerator(style: .soft)
       feedback.prepare()
@@ -122,6 +128,9 @@ private struct iOSRootView: View {
     }
     .onReceive(NotificationCenter.default.publisher(for: .tempoOpenDeveloperTools)) { _ in
       openDeveloperTools()
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .tempoRuntimeNavigationDepth)) { notification in
+      runtimeNavigationDepth = notification.userInfo?["depth"] as? Int ?? 0
     }
     .onAppear {
       TempoNativeRegistry.shared.connect(

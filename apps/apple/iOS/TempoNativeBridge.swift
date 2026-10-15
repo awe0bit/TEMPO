@@ -6,6 +6,7 @@ import UIKit
 extension Notification.Name {
   static let tempoOpenDeveloperTools = Notification.Name("tempo.open-developer-tools")
   static let tempoRuntimeReady = Notification.Name("tempo.runtime-ready")
+  static let tempoRuntimeNavigationDepth = Notification.Name("tempo.runtime-navigation-depth")
 }
 
 @MainActor
@@ -349,6 +350,15 @@ final class TempoNativeRegistry {
     guard let type = message["type"] as? String else { return }
     if type == "tempo.ready" {
       NotificationCenter.default.post(name: .tempoRuntimeReady, object: nil)
+      return
+    }
+    if type == "tempo.navigation-depth" {
+      let depth = (message["depth"] as? NSNumber)?.intValue ?? 0
+      NotificationCenter.default.post(
+        name: .tempoRuntimeNavigationDepth,
+        object: nil,
+        userInfo: ["depth": depth]
+      )
       return
     }
     guard let requestID = message["requestId"] as? String else { return }

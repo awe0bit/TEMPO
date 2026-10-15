@@ -72,6 +72,10 @@ export const tempoNative = {
     Brownfield.sendMessage({ type: 'tempo.ready' });
   },
 
+  setNavigationDepth(depth: number) {
+    Brownfield.sendMessage({ type: 'tempo.navigation-depth', depth });
+  },
+
   bootstrap(): Promise<TempoSnapshot> {
     return request<TempoSnapshot>({ type: 'tempo.bootstrap' });
   },

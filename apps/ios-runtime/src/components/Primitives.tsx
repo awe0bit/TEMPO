@@ -72,7 +72,7 @@ export function Pill({ theme, label, selected, onPress }: {
   theme: TempoTheme; label: string; selected?: boolean; onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, { backgroundColor: selected ? theme.accent : theme.surface }, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.pill, { backgroundColor: selected ? theme.accent : theme.surfaceMuted }, pressed && styles.pressed]}>
       <Text style={[styles.pillText, { color: selected ? '#FFFFFF' : theme.text }]}>{label}</Text>
     </Pressable>
   );
@@ -116,18 +116,18 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 44 },
   chromeGap: { height: 56, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 82 },
   chromeTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -.2, textAlign: 'center' },
-  sectionWrap: { marginHorizontal: 20, marginBottom: 16 },
-  sectionLabel: { fontSize: 14, lineHeight: 19, fontWeight: '500', marginBottom: 7, marginLeft: 12 },
-  section: { borderRadius: 22, overflow: 'hidden' },
+  sectionWrap: { marginHorizontal: 18, marginBottom: 12 },
+  sectionLabel: { fontSize: 13, lineHeight: 18, fontWeight: '500', marginBottom: 6, marginLeft: 8 },
+  section: { borderRadius: 18, overflow: 'hidden' },
   divider: { height: StyleSheet.hairlineWidth },
-  row: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
+  row: { minHeight: 58, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, paddingVertical: 10 },
   rowText: { flex: 1 },
   rowTitle: { fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -.2 },
   rowDetail: { fontSize: 14, lineHeight: 19, marginTop: 3 },
   chevron: { fontSize: 28, fontWeight: '300' },
   pill: { height: 38, paddingHorizontal: spacing.lg, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   pillText: { fontSize: 15, fontWeight: '600' },
-  primary: { height: 58, borderRadius: radius.large, alignItems: 'center', justifyContent: 'center', marginHorizontal: 20 },
+  primary: { height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginHorizontal: 18 },
   primaryText: { fontSize: 17, fontWeight: '600' },
   sheet: { flex: 1 },
   pressed: { opacity: .62 },
