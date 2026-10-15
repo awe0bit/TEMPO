@@ -1,6 +1,7 @@
 import Foundation
 
 enum TempoPreferenceKey {
+  static let appearance = "qingxu.appearance"
   static let moduleOrder = "qingxu.modules.order"
   static let haptics = "qingxu.feedback.haptics"
   static let completionSound = "qingxu.feedback.completionSound"

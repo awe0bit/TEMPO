@@ -58,9 +58,13 @@ export function useTempo(routeOverride?: TempoSnapshot['route']) {
 
   const consumeCommand = useCallback(() => setCommand(undefined), []);
   const route = activeRoute ?? snapshot?.route ?? 'today';
+  const appearance = snapshot?.preferences?.appearance;
+  const effectiveScheme = appearance === 'system'
+    ? systemScheme
+    : appearance ?? snapshot?.colorScheme ?? systemScheme;
   const theme = useMemo(
-    () => makeTheme(snapshot?.colorScheme ?? systemScheme),
-    [snapshot?.colorScheme, systemScheme],
+    () => makeTheme(effectiveScheme),
+    [effectiveScheme],
   );
 
   return { snapshot, route, theme, command, consumeCommand, perform, error, clearError: () => setError(undefined) };

@@ -48,6 +48,7 @@ private struct iOSRootView: View {
   @State private var selection = AppTab.today
   @State private var showingLaunchExperience = true
   @State private var availableUpdate: TempoRelease?
+  @AppStorage(TempoPreferenceKey.appearance) private var appearance = "system"
   @AppStorage(TempoPreferenceKey.moduleOrder) private var moduleOrder = TempoModuleOrder.defaultValue
 
   var body: some View {
@@ -130,6 +131,15 @@ private struct iOSRootView: View {
       )
       consumePendingWidgetDestination()
       RSSBackgroundRefresh.schedule()
+    }
+    .preferredColorScheme(preferredColorScheme)
+  }
+
+  private var preferredColorScheme: ColorScheme? {
+    switch appearance {
+    case "light": .light
+    case "dark": .dark
+    default: nil
     }
   }
 

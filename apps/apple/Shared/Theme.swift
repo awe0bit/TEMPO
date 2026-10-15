@@ -1,14 +1,14 @@
 import SwiftUI
 
 enum TempoPalette {
-  static let background = Color.adaptive(lightHex: 0xF3F4F5, darkHex: 0xF3F4F5)
-  static let secondaryBackground = Color.adaptive(lightHex: 0xF3F4F5, darkHex: 0xF3F4F5)
-  static let surface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0xFFFFFF)
-  static let elevatedSurface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0xFFFFFF)
-  static let ink = Color.adaptive(lightHex: 0x1A1C1F, darkHex: 0x1A1C1F)
-  static let quiet = Color.adaptive(lightHex: 0x74777C, darkHex: 0x74777C)
-  static let faint = Color.adaptive(lightHex: 0x96999E, darkHex: 0x96999E)
-  static let separator = Color.adaptive(lightHex: 0xE4E5E7, darkHex: 0xE4E5E7)
+  static let background = Color.adaptive(lightHex: 0xF3F4F5, darkHex: 0x101214)
+  static let secondaryBackground = Color.adaptive(lightHex: 0xF3F4F5, darkHex: 0x101214)
+  static let surface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x1A1C1F)
+  static let elevatedSurface = Color.adaptive(lightHex: 0xFFFFFF, darkHex: 0x22252A)
+  static let ink = Color.adaptive(lightHex: 0x1A1C1F, darkHex: 0xFFFFFF)
+  static let quiet = Color.adaptive(lightHex: 0x74777C, darkHex: 0xA8ABB0)
+  static let faint = Color.adaptive(lightHex: 0x96999E, darkHex: 0x777B81)
+  static let separator = Color.adaptive(lightHex: 0xE4E5E7, darkHex: 0x30343A)
   static let accent = Color.adaptive(
     lightHex: 0x339CFF,
     darkHex: 0x339CFF
@@ -16,7 +16,7 @@ enum TempoPalette {
   static let onAccent = Color.white
   static let selected = Color.adaptive(
     lightHex: 0xEAF5FF,
-    darkHex: 0xEAF5FF
+    darkHex: 0x162B40
   )
   static let success = Color.adaptive(
     lightHex: 0x2E7D64,

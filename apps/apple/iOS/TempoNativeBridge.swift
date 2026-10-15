@@ -51,13 +51,19 @@ final class TempoNativeRegistry {
 
   func snapshot() -> [String: Any] {
     let defaults = UserDefaults.standard
-    let scheme = UITraitCollection.current.userInterfaceStyle == .dark ? "dark" : "light"
+    let appearance = defaults.string(forKey: TempoPreferenceKey.appearance) ?? "system"
+    let scheme: String
+    switch appearance {
+    case "light", "dark": scheme = appearance
+    default: scheme = UITraitCollection.current.userInterfaceStyle == .dark ? "dark" : "light"
+    }
     var result: [String: Any] = [
       "route": "today",
       "locale": Locale.current.identifier,
       "colorScheme": scheme,
       "revision": revision,
       "preferences": [
+        "appearance": appearance,
         "haptics": defaults.object(forKey: TempoPreferenceKey.haptics) as? Bool ?? true,
         "completionSound": defaults.object(forKey: TempoPreferenceKey.completionSound) as? Bool ?? true,
         "weekStartsMonday": defaults.object(forKey: TempoPreferenceKey.weekStartsMonday) as? Bool ?? true,
@@ -300,6 +306,10 @@ final class TempoNativeRegistry {
       }
       if let order = payload["moduleOrder"] as? String {
         defaults.set(order, forKey: TempoPreferenceKey.moduleOrder)
+      }
+      if let appearance = payload["appearance"] as? String,
+         ["system", "light", "dark"].contains(appearance) {
+        defaults.set(appearance, forKey: TempoPreferenceKey.appearance)
       }
       emitSnapshot()
       return ["ok": true]

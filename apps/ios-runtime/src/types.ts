@@ -105,6 +105,7 @@ export type TempoSnapshot = {
     weather?: { cityName: string; temperature: string; text: string; icon: string };
   };
   preferences?: {
+    appearance: 'system' | 'light' | 'dark';
     haptics: boolean;
     completionSound: boolean;
     weekStartsMonday: boolean;
