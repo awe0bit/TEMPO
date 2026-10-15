@@ -75,6 +75,12 @@ jobs:
           }
 
           requested="${REQUESTED_PLATFORM:-auto}"
+          apple_scope="all"
+          head_subject="$(git log -1 --pretty=%s "$GITHUB_SHA")"
+          case "$head_subject" in
+            *"(ios):"*|*"[ios-only]"*) apple_scope="ios" ;;
+            *"(macos):"*|*"[macos-only]"*) apple_scope="macos" ;;
+          esac
           if [[ "$GITHUB_REF" == refs/tags/v* || "$requested" == "all" ]]; then
             mark_all_clients
           elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$requested" != "auto" ]]; then
@@ -99,13 +105,21 @@ jobs:
             while IFS= read -r path; do
               case "$path" in
                 apps/apple/Shared/*)
-                  build_ios=true; build_macos=true ;;
+                  case "$apple_scope" in
+                    ios) build_ios=true ;;
+                    macos) build_macos=true ;;
+                    *) build_ios=true; build_macos=true ;;
+                  esac ;;
                 apps/apple/iOS/*|apps/apple/Configuration/TempoiOS.entitlements|apps/apple/Configuration/TempoWidgets.entitlements)
                   build_ios=true ;;
                 apps/apple/macOS/*|apps/apple/macOSWidgets/*|apps/apple/Configuration/TempomacOS.entitlements|apps/apple/Configuration/TempomacOSWidgets.entitlements)
                   build_macos=true ;;
                 apps/apple/project.yml)
-                  build_ios=true; build_macos=true ;;
+                  case "$apple_scope" in
+                    ios) build_ios=true ;;
+                    macos) build_macos=true ;;
+                    *) build_ios=true; build_macos=true ;;
+                  esac ;;
                 apps/ios-runtime/package.json|apps/ios-runtime/package-lock.json|apps/ios-runtime/app.config.js|apps/ios-runtime/runtime-version.txt|apps/ios-runtime/scripts/*|apps/ios-runtime/babel.config.js|apps/ios-runtime/metro.config.js)
                   build_ios=true ;;
                 apps/flutter/ios/TempoWidgets/*|apps/flutter/ios/Shared/TempoPomodoroAttributes.swift)
