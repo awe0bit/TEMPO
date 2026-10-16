@@ -75,6 +75,7 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
   };
 
   const inset = 3;
+  const radius = height >= 40 ? 14 : 13;
   const segmentWidth = width > inset * 2 ? (width - inset * 2) / values.length : 0;
   const translateX = position.interpolate({
     inputRange: values.map((_, index) => index),
@@ -84,7 +85,7 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
   return (
     <View
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      style={[styles.control, { height, borderRadius: height / 2, backgroundColor: theme.surfaceMuted }, style]}
+      style={[styles.control, { height, borderRadius: radius, backgroundColor: theme.surfaceMuted }, style]}
     >
       {segmentWidth > 0 ? (
         <Animated.View
@@ -96,7 +97,7 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
               bottom: inset,
               left: inset,
               width: segmentWidth,
-              borderRadius: (height - inset * 2) / 2,
+              borderRadius: radius,
               backgroundColor: theme.accent,
               transform: [{ translateX }],
             },
