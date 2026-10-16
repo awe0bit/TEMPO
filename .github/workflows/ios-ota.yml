@@ -116,6 +116,7 @@ jobs:
         run: echo "OTA export validated. Add EXPO_TOKEN to publish updates."
       - name: Broadcast foreground update signal
         if: env.EXPO_TOKEN != '' && env.OTA_SIGNAL_TOKEN != ''
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -171,6 +172,7 @@ jobs:
             --non-interactive
       - name: Broadcast recovery update signal
         if: env.OTA_SIGNAL_TOKEN != ''
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail

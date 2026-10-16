@@ -71,8 +71,8 @@ jobs:
           from pathlib import Path
 
           roots = [
-              Path('/opt/1panel/apps/openresty/openresty/conf'),
-              Path('/opt/1panel/www/sites/todo.darker.one'),
+              Path('/opt/1panel'),
+              Path('/etc/nginx'),
           ]
           candidates = []
           for root in roots:
