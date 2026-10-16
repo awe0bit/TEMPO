@@ -26,6 +26,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [searchActive, setSearchActive] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [undo, setUndo] = useState<TempoTask>();
+  const [armedDeleteID, setArmedDeleteID] = useState<string>();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
@@ -91,6 +92,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   }
 
   async function remove(task: TempoTask) {
+    setArmedDeleteID(undefined);
     await perform('task.delete', { id: task.id });
     setUndo(task);
   }
@@ -131,9 +133,14 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 theme={theme}
                 first={index === 0}
                 last={index === shown.length - 1}
+                armed={armedDeleteID === item.id}
                 onDelete={() => {
-                  rowMap[item.id]?.closeRow();
-                  void remove(item);
+                  const row = rowMap[item.id];
+                  if (row) {
+                    row.manuallySwipeRow(-460, () => void remove(item));
+                  } else {
+                    void remove(item);
+                  }
                 }}
               />
             )}
@@ -151,6 +158,9 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
             closeOnRowOpen
             closeOnScroll
             useNativeDriver
+            onRightActionStatusChange={({ key, isActivated }) => {
+              setArmedDeleteID((current) => isActivated ? key : current === key ? undefined : current);
+            }}
             onRightAction={(rowKey) => {
               const task = shownByID.get(rowKey);
               if (task) void remove(task);
@@ -257,11 +267,27 @@ function TaskRow({ task, theme, first, last, onOpen, onToggle }: { task: TempoTa
   );
 }
 
-function DeleteBehindRow({ theme, first, last, onDelete }: { theme: TempoTheme; first: boolean; last: boolean; onDelete: () => void }) {
+function DeleteBehindRow({ theme, first, last, armed, swipeAnimatedValue, onDelete }: {
+  theme: TempoTheme;
+  first: boolean;
+  last: boolean;
+  armed: boolean;
+  swipeAnimatedValue?: Animated.Value;
+  onDelete: () => void;
+}) {
+  const activation = useRef(new Animated.Value(armed ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(activation, { toValue: armed ? 1 : 0, useNativeDriver: true, stiffness: 430, damping: 25, mass: .58 }).start();
+  }, [activation, armed]);
+  const dragScale = swipeAnimatedValue?.interpolate({ inputRange: [-156, -88, -12, 0], outputRange: [1.08, 1, .8, .72], extrapolate: 'clamp' }) ?? 1;
+  const opacity = swipeAnimatedValue?.interpolate({ inputRange: [-88, -14, 0], outputRange: [1, .45, 0], extrapolate: 'clamp' }) ?? 1;
+  const armedScale = activation.interpolate({ inputRange: [0, 1], outputRange: [1, 1.13] });
   return <View style={[styles.deleteBehind, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
-    <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={onDelete} style={({ pressed }) => [styles.deleteBubble, { backgroundColor: theme.danger, transform: [{ scale: pressed ? .92 : 1 }] }]}>
-      <Text style={styles.deleteLabel}>{t('tasks.delete')}</Text>
-    </Pressable>
+    <Animated.View style={[styles.deleteBubble, armed && styles.deleteBubbleArmed, { backgroundColor: theme.danger, opacity, transform: [{ scale: Animated.multiply(dragScale, armedScale) }] }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={onDelete} style={({ pressed }) => [styles.deletePressable, pressed && styles.deletePressed]}>
+        <Text style={[styles.deleteLabel, armed && styles.deleteLabelArmed]}>{armed ? t('tasks.releaseToDelete') : t('tasks.delete')}</Text>
+      </Pressable>
+    </Animated.View>
   </View>;
 }
 
@@ -340,8 +366,12 @@ const styles = StyleSheet.create({
   groupTop: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   groupBottom: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
   deleteBehind: { minHeight: 66, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingRight: 8, overflow: 'hidden' },
-  deleteBubble: { width: 54, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  deleteBubble: { width: 58, height: 40, borderRadius: 20, shadowColor: '#000000', shadowOpacity: .08, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  deleteBubbleArmed: { shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 } },
+  deletePressable: { flex: 1, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  deletePressed: { opacity: .72 },
   deleteLabel: { color: '#FFFFFF', fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
+  deleteLabelArmed: { fontWeight: '800' },
   taskRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
   checkbox: { width: 22, height: 22, borderWidth: 1.5, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   check: { color: '#fff', fontWeight: '800' },
