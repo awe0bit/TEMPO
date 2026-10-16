@@ -7,6 +7,7 @@ extension Notification.Name {
   static let tempoOpenDeveloperTools = Notification.Name("tempo.open-developer-tools")
   static let tempoRuntimeReady = Notification.Name("tempo.runtime-ready")
   static let tempoRuntimeNavigationDepth = Notification.Name("tempo.runtime-navigation-depth")
+  static let tempoRuntimeNavigationProgress = Notification.Name("tempo.runtime-navigation-progress")
 }
 
 @MainActor
@@ -358,6 +359,15 @@ final class TempoNativeRegistry {
         name: .tempoRuntimeNavigationDepth,
         object: nil,
         userInfo: ["depth": depth]
+      )
+      return
+    }
+    if type == "tempo.navigation-progress" {
+      let progress = (message["progress"] as? NSNumber)?.doubleValue ?? 0
+      NotificationCenter.default.post(
+        name: .tempoRuntimeNavigationProgress,
+        object: nil,
+        userInfo: ["progress": progress]
       )
       return
     }

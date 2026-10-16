@@ -49,31 +49,30 @@ private struct iOSRootView: View {
   @State private var showingLaunchExperience = true
   @State private var availableUpdate: TempoRelease?
   @State private var runtimeNavigationDepth = 0
+  @State private var runtimeTabVisibility: CGFloat = 1
   @AppStorage(TempoPreferenceKey.appearance) private var appearance = "system"
   @AppStorage(TempoPreferenceKey.moduleOrder) private var moduleOrder = TempoModuleOrder.defaultValue
 
   var body: some View {
     GeometryReader { geometry in
-      ZStack {
+      ZStack(alignment: .bottom) {
         TempoPalette.background.ignoresSafeArea()
 
-        // A single permanent Brownfield host and a standalone native UITabBar
-        // share the screen without an opaque UITabBarController content layer.
-        VStack(spacing: 0) {
-          TempoRuntimeScreen(route: selection)
+        // Keep the Brownfield host's size stable while the native tab bar follows
+        // React Navigation's interactive transition as an independent overlay.
+        TempoRuntimeScreen(route: selection)
 
-          if runtimeNavigationDepth == 0 {
-            TempoNativeTabBar(
-              selection: $selection,
-              visibleTabs: visibleTabs
-            ) {
-              openDeveloperTools()
-            }
-            .frame(height: 49 + geometry.safeAreaInsets.bottom)
-            .disabled(showingLaunchExperience)
-          }
+        TempoNativeTabBar(
+          selection: $selection,
+          visibleTabs: visibleTabs
+        ) {
+          openDeveloperTools()
         }
-        .ignoresSafeArea(edges: .bottom)
+        .frame(height: 49 + geometry.safeAreaInsets.bottom)
+        .opacity(runtimeTabVisibility)
+        .offset(y: (1 - runtimeTabVisibility) * (57 + geometry.safeAreaInsets.bottom))
+        .allowsHitTesting(runtimeTabVisibility > 0.98 && !showingLaunchExperience)
+        .accessibilityHidden(runtimeTabVisibility < 0.98)
 
         if showingLaunchExperience {
           TempoLaunchExperience {
@@ -84,9 +83,11 @@ private struct iOSRootView: View {
           .zIndex(10)
         }
       }
+      .ignoresSafeArea(edges: .bottom)
     }
     .onChange(of: selection) { _ in
       runtimeNavigationDepth = 0
+      runtimeTabVisibility = 1
       guard !showingLaunchExperience else { return }
       let feedback = UIImpactFeedbackGenerator(style: .soft)
       feedback.prepare()
@@ -129,6 +130,10 @@ private struct iOSRootView: View {
     }
     .onReceive(NotificationCenter.default.publisher(for: .tempoRuntimeNavigationDepth)) { notification in
       runtimeNavigationDepth = notification.userInfo?["depth"] as? Int ?? 0
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .tempoRuntimeNavigationProgress)) { notification in
+      let value = (notification.userInfo?["progress"] as? NSNumber)?.doubleValue ?? 0
+      runtimeTabVisibility = CGFloat(min(max(value, 0), 1))
     }
     .onAppear {
       TempoNativeRegistry.shared.connect(
