@@ -290,6 +290,12 @@ jobs:
               existing_domain = connection.execute('select id from website_domains where website_id=? and domain=? and port=?', (website_id, domain, 443)).fetchone()
               if not existing_domain:
                   connection.execute('insert into website_domains(created_at,updated_at,website_id,domain,ssl,port) values(?,?,?,?,?,?)', (now, now, website_id, domain, 1, 443))
+              registered_compose = connection.execute('select id,path from composes where name=?', ('tempo-services',)).fetchone()
+              registered_website = connection.execute('select id,status,site_dir from websites where primary_domain=?', (domain,)).fetchone()
+              if not registered_compose or not registered_website:
+                  raise SystemExit('1Panel registration did not persist')
+              print(f'1Panel Compose registered: tempo-services ({registered_compose[1]})')
+              print(f'1Panel website registered: {domain} ({registered_website[1]})')
           connection.close()
           PY
           )"
@@ -298,7 +304,9 @@ jobs:
       - name: Verify production services
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 https://todo.darker.one/ | grep -q '<title>Tempo'
-          curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 https://todo.darker.one/api/ota/health | grep -q '"ok":true'
+          docs_html="$(curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 https://todo.darker.one/)"
+          health_json="$(curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 https://todo.darker.one/api/ota/health)"
+          grep -q '<title>Tempo' <<< "$docs_html"
+          grep -q '"ok":true' <<< "$health_json"
           status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST https://todo.darker.one/api/ota/publish)"
           test "$status" = "401"
