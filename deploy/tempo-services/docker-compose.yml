@@ -26,25 +26,3 @@ services:
       start_period: 5s
       retries: 3
     stop_grace_period: 15s
-
-  ota-signal:
-    build:
-      context: ./ota-signal
-    image: tempo-ota-signal:local
-    restart: unless-stopped
-    env_file:
-      - ota.env
-    ports:
-      - "127.0.0.1:8787:8787"
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 32
-    mem_limit: 32m
-    healthcheck:
-      test: ["CMD", "/tempo-ota-signal", "healthcheck"]
-      interval: 30s
-      timeout: 3s
-      retries: 3

@@ -1,104 +1,84 @@
 import * as Updates from 'expo-updates';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
-const SIGNAL_URL = 'wss://todo.darker.one/api/ota/events';
-const RETRY_DELAYS = [0, 3000, 8000] as const;
-
-type OTAAnnouncement = {
-  type: 'ota-ready';
-  channel: string;
-  runtimeVersion: string;
+export type ForegroundOTAState = {
+  stage: 'idle' | 'checking' | 'available' | 'downloading' | 'pending' | 'current' | 'error';
+  progress: number;
+  error?: string;
 };
 
-export function useForegroundOTA() {
+export type ForegroundOTAController = ForegroundOTAState & {
+  checkNow: () => Promise<void>;
+};
+
+const INITIAL_STATE: ForegroundOTAState = { stage: 'idle', progress: 0 };
+const MINIMUM_STAGE_TIME = 320;
+
+export function useForegroundOTA(): ForegroundOTAController {
+  const nativeUpdate = Updates.useUpdates();
+  const [state, setState] = useState<ForegroundOTAState>(INITIAL_STATE);
+  const updateTask = useRef<Promise<void> | undefined>(undefined);
+
+  useEffect(() => {
+    if (!nativeUpdate.isDownloading) return;
+    const download = Math.max(0, Math.min(1, nativeUpdate.downloadProgress ?? 0));
+    setState(previous => previous.stage === 'downloading'
+      ? { ...previous, progress: .22 + download * .68 }
+      : previous);
+  }, [nativeUpdate.downloadProgress, nativeUpdate.isDownloading]);
+
+  const checkNow = useCallback(() => {
+    if (__DEV__ || !Updates.isEnabled) return Promise.resolve();
+    if (updateTask.current) return updateTask.current;
+
+    updateTask.current = (async () => {
+      if (nativeUpdate.isUpdatePending) {
+        setState({ stage: 'pending', progress: .94 });
+        return;
+      }
+
+      setState({ stage: 'checking', progress: .1 });
+      const startedAt = Date.now();
+      const result = await Updates.checkForUpdateAsync();
+      const remaining = MINIMUM_STAGE_TIME - (Date.now() - startedAt);
+      if (remaining > 0) await wait(remaining);
+
+      if (!result.isAvailable) {
+        setState({ stage: 'current', progress: 1 });
+        return;
+      }
+
+      setState({ stage: 'available', progress: .2 });
+      await wait(MINIMUM_STAGE_TIME);
+      setState({ stage: 'downloading', progress: .22 });
+      await Updates.fetchUpdateAsync();
+      setState({ stage: 'pending', progress: .94 });
+    })().catch(error => {
+      setState({
+        stage: 'error',
+        progress: .08,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }).finally(() => {
+      updateTask.current = undefined;
+    });
+
+    return updateTask.current;
+  }, [nativeUpdate.isUpdatePending]);
+
   useEffect(() => {
     if (__DEV__ || !Updates.isEnabled) return;
-
-    let active = AppState.currentState === 'active';
-    let disposed = false;
-    let reconnectAttempt = 0;
-    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-    let socket: WebSocket | undefined;
-    let updateTask: Promise<void> | undefined;
-
-    const clearReconnect = () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      reconnectTimer = undefined;
-    };
-
-    const disconnect = () => {
-      clearReconnect();
-      const current = socket;
-      socket = undefined;
-      if (current && current.readyState < WebSocket.CLOSING) current.close(1000, 'background');
-    };
-
-    const checkAndDownload = async (announcement: OTAAnnouncement) => {
-      if (announcement.channel !== (Updates.channel ?? 'production')) return;
-      if (announcement.runtimeVersion !== Updates.runtimeVersion) return;
-      if (updateTask) return updateTask;
-
-      updateTask = (async () => {
-        for (const delay of RETRY_DELAYS) {
-          if (delay) await wait(delay);
-          if (disposed || !active) return;
-          const result = await Updates.checkForUpdateAsync();
-          if (!result.isAvailable) continue;
-          await Updates.fetchUpdateAsync();
-          return;
-        }
-      })().catch(() => {
-        // expo-updates exposes check/download failures through useUpdates.
-      }).finally(() => {
-        updateTask = undefined;
-      });
-      return updateTask;
-    };
-
-    const connect = () => {
-      if (disposed || !active || socket) return;
-      clearReconnect();
-      const next = new WebSocket(SIGNAL_URL);
-      socket = next;
-      next.onopen = () => {
-        reconnectAttempt = 0;
-      };
-      next.onmessage = event => {
-        if (typeof event.data !== 'string') return;
-        try {
-          const announcement = JSON.parse(event.data) as Partial<OTAAnnouncement>;
-          if (announcement.type !== 'ota-ready' || !announcement.channel || !announcement.runtimeVersion) return;
-          void checkAndDownload(announcement as OTAAnnouncement);
-        } catch {
-          // Ignore malformed signal payloads; the connection stays usable.
-        }
-      };
-      next.onerror = () => {
-        next.close();
-      };
-      next.onclose = () => {
-        if (socket === next) socket = undefined;
-        if (disposed || !active) return;
-        const delay = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt, 5));
-        reconnectAttempt += 1;
-        reconnectTimer = setTimeout(connect, delay);
-      };
-    };
-
-    const subscription = AppState.addEventListener('change', state => {
-      active = state === 'active';
-      if (active) connect();
-      else disconnect();
+    let previous = AppState.currentState;
+    void checkNow();
+    const subscription = AppState.addEventListener('change', next => {
+      if (previous !== 'active' && next === 'active') void checkNow();
+      previous = next;
     });
-    if (active) connect();
+    return () => subscription.remove();
+  }, [checkNow]);
 
-    return () => {
-      disposed = true;
-      subscription.remove();
-      disconnect();
-    };
-  }, []);
+  return { ...state, checkNow };
 }
 
 function wait(milliseconds: number) {

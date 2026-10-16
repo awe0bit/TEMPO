@@ -30,7 +30,7 @@ echo "$TOKEN"
 
 The health endpoint should return `{"status":"ok"}`. Save the token in a password manager; the server never returns it through an API.
 
-The repository also includes [`deploy/tempo-services`](https://github.com/awe0bit/Tempo/tree/main/deploy/tempo-services) for the production server. It groups sync and the iOS foreground OTA signal into one `tempo-services` Compose project registered in 1Panel. Regular self-hosted installations only need the sync service above.
+The repository also includes [`deploy/tempo-services`](https://github.com/awe0bit/Tempo/tree/main/deploy/tempo-services) for the production server. It registers the sync service as the `tempo-services` Compose project in 1Panel.
 
 ## Environment
 

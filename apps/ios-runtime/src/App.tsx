@@ -20,7 +20,7 @@ type RuntimeProps = {
 
 export default function App(props: RuntimeProps) {
   setAppLocale(props.locale);
-  useForegroundOTA();
+  const foregroundOTA = useForegroundOTA();
   const tempo = useTempo(props.route);
   const { snapshot, route, theme, error, clearError, command, consumeCommand } = tempo;
   const [developerToolsVisible, setDeveloperToolsVisible] = useState(false);
@@ -30,6 +30,10 @@ export default function App(props: RuntimeProps) {
     setDeveloperToolsVisible(true);
     consumeCommand();
   }, [command, consumeCommand]);
+
+  useEffect(() => {
+    if (developerToolsVisible) void foregroundOTA.checkNow();
+  }, [developerToolsVisible, foregroundOTA.checkNow]);
 
   return (
     <View style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
@@ -43,7 +47,7 @@ export default function App(props: RuntimeProps) {
             <Text style={[styles.sheetCloseText, { color: theme.secondary }]}>×</Text>
           </Pressable>
         </View>
-        <DeveloperToolsContent theme={theme} snapshot={snapshot} />
+        <DeveloperToolsContent theme={theme} snapshot={snapshot} foregroundOTA={foregroundOTA} />
       </Sheet> : null}
     </View>
   );

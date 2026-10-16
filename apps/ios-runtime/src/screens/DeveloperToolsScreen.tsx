@@ -2,13 +2,14 @@ import * as Updates from 'expo-updates';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Divider, Row, Section } from '../components/Primitives';
+import type { ForegroundOTAState } from '../hooks/useForegroundOTA';
 import { formatDate, t } from '../i18n';
 import type { TempoTheme } from '../theme';
 import type { TempoSnapshot } from '../types';
 
-type Props = { theme: TempoTheme; snapshot: TempoSnapshot };
+type Props = { theme: TempoTheme; snapshot: TempoSnapshot; foregroundOTA: ForegroundOTAState };
 
-export function DeveloperToolsContent({ theme, snapshot }: Props) {
+export function DeveloperToolsContent({ theme, snapshot, foregroundOTA }: Props) {
   const update = Updates.useUpdates();
   const sync = snapshot.sync;
   const updateID = Updates.updateId ?? t('dev.embeddedVersion');
@@ -25,7 +26,7 @@ export function DeveloperToolsContent({ theme, snapshot }: Props) {
     >
       <Text style={[styles.intro, { color: theme.secondary }]}>{t('dev.intro')}</Text>
 
-      <OTAProgress theme={theme} update={update} />
+      <OTAProgress theme={theme} update={update} foregroundOTA={foregroundOTA} />
 
       <Section theme={theme} title={t('dev.otaLayer')}>
         <Row theme={theme} title={t('dev.runtimeVersion')} detail={Updates.runtimeVersion ?? t('common.notAvailable')} />
@@ -65,8 +66,8 @@ export function DeveloperToolsContent({ theme, snapshot }: Props) {
   );
 }
 
-function OTAProgress({ theme, update }: { theme: TempoTheme; update: ReturnType<typeof Updates.useUpdates> }) {
-  const state = otaState(update);
+function OTAProgress({ theme, update, foregroundOTA }: { theme: TempoTheme; update: ReturnType<typeof Updates.useUpdates>; foregroundOTA: ForegroundOTAState }) {
+  const state = otaState(update, foregroundOTA);
   const progressWidth = `${Math.round(state.progress * 100)}%` as `${number}%`;
   const updateInfo = update.downloadedUpdate ?? update.availableUpdate;
   const updateID = updateInfo?.updateId?.slice(0, 8);
@@ -95,19 +96,22 @@ function OTAProgress({ theme, update }: { theme: TempoTheme; update: ReturnType<
   );
 }
 
-function otaState(update: ReturnType<typeof Updates.useUpdates>) {
+function otaState(update: ReturnType<typeof Updates.useUpdates>, foregroundOTA: ForegroundOTAState) {
   if (!Updates.isEnabled) return { progress: 0, title: t('dev.otaUnavailable'), detail: t('dev.otaUnavailableDetail'), error: true };
+  if (foregroundOTA.stage === 'error') return { progress: foregroundOTA.progress, title: t('dev.downloadFailed'), detail: foregroundOTA.error ?? t('error.operationFailed'), error: true };
+  if (foregroundOTA.stage === 'pending' || update.isUpdatePending) return { progress: .94, title: t('dev.readyToRestart'), detail: t('dev.readyToRestartDetail'), error: false };
+  if (foregroundOTA.stage === 'downloading' || update.isDownloading) {
+    const progress = foregroundOTA.stage === 'downloading' ? foregroundOTA.progress : .22 + Math.max(0, Math.min(1, update.downloadProgress ?? 0)) * .68;
+    const download = Math.round(Math.max(0, Math.min(1, (progress - .22) / .68)) * 100);
+    return { progress, title: t('dev.downloading'), detail: t('dev.downloadingDetail', { progress: download }), error: false };
+  }
+  if (foregroundOTA.stage === 'available' || update.isUpdateAvailable) return { progress: .2, title: t('dev.updatePublished'), detail: t('dev.updatePublishedDetail'), error: false };
+  if (foregroundOTA.stage === 'checking' || update.isChecking || update.isStartupProcedureRunning) return { progress: Math.max(.08, foregroundOTA.progress), title: t('dev.checkingUpdate'), detail: t('dev.checkingUpdateDetail'), error: false };
+  if (foregroundOTA.stage === 'current') return { progress: 1, title: t('dev.updateComplete'), detail: t('dev.updateCompleteDetail'), error: false };
   if (update.checkError) return { progress: .08, title: t('dev.checkFailed'), detail: update.checkError.message, error: true };
   if (update.downloadError) return { progress: .18, title: t('dev.downloadFailed'), detail: update.downloadError.message, error: true };
   if (update.isRestarting) return { progress: .96, title: t('dev.restarting'), detail: t('dev.restartingDetail'), error: false };
-  if (update.isUpdatePending) return { progress: .92, title: t('dev.readyToRestart'), detail: t('dev.readyToRestartDetail'), error: false };
-  if (update.isDownloading) {
-    const download = Math.max(0, Math.min(1, update.downloadProgress ?? 0));
-    return { progress: .18 + download * .67, title: t('dev.downloading'), detail: t('dev.downloadingDetail', { progress: Math.round(download * 100) }), error: false };
-  }
-  if (update.isUpdateAvailable) return { progress: .16, title: t('dev.updatePublished'), detail: t('dev.updatePublishedDetail'), error: false };
-  if (update.isChecking || update.isStartupProcedureRunning) return { progress: .08, title: t('dev.checkingUpdate'), detail: t('dev.checkingUpdateDetail'), error: false };
-  return { progress: 1, title: t('dev.updateComplete'), detail: t('dev.updateCompleteDetail'), error: false };
+  return { progress: 0, title: t('dev.readyToCheck'), detail: t('dev.readyToCheckDetail'), error: false };
 }
 
 function syncLabel(phase?: string, pending = 0) {

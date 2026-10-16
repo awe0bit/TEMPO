@@ -1,11 +1,10 @@
-name: Tempo Services
+name: Tempo Sync Service
 
 on:
   push:
     branches: [main]
     paths:
       - "services/sync/**"
-      - "services/ota-signal/**"
       - "deploy/tempo-services/**"
       - ".github/workflows/ota-signal.yml"
   workflow_dispatch:
@@ -20,18 +19,15 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [sync, ota-signal]
     defaults:
       run:
-        working-directory: services/${{ matrix.service }}
+        working-directory: services/sync
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version: '1.27.0'
-          cache-dependency-path: services/${{ matrix.service }}/go.mod
+          cache-dependency-path: services/sync/go.mod
       - run: go mod download
       - run: go test ./...
       - run: go vet ./...
@@ -56,25 +52,20 @@ jobs:
       - name: Publish unified Compose files
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          OTA_SIGNAL_TOKEN: ${{ secrets.OTA_SIGNAL_TOKEN }}
         run: |
           set -euo pipefail
-          test -n "$OTA_SIGNAL_TOKEN"
           target="ubuntu@$DEPLOY_HOST"
           ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=30)
           staging="/home/ubuntu/.tempo-services-staging"
           install_root="/opt/1panel/docker/compose/tempo-services"
 
           rm -rf package
-          mkdir -p package/sync package/ota-signal
+          mkdir -p package/sync
           cp deploy/tempo-services/docker-compose.yml package/docker-compose.yml
           cp services/sync/{Dockerfile,.dockerignore,go.mod} package/sync/
           cp -R services/sync/{cmd,internal} package/sync/
-          cp services/ota-signal/{Dockerfile,.dockerignore,go.mod,go.sum,main.go,main_test.go} package/ota-signal/
           ssh "${ssh_opts[@]}" "$target" "rm -rf '$staging' && mkdir -p '$staging'"
           tar -C package -czf - . | ssh "${ssh_opts[@]}" "$target" "tar -xzf - -C '$staging'"
-          token_base64="$(printf '%s' "$OTA_SIGNAL_TOKEN" | base64 -w 0)"
-          ssh "${ssh_opts[@]}" "$target" "umask 077; printf '%s' '$token_base64' | base64 --decode | sed 's/^/OTA_SIGNAL_TOKEN=/' > '$staging/ota.env'"
 
           prepare_script="$(base64 -w 0 <<'PY'
           import json
@@ -114,7 +105,7 @@ jobs:
               sync_env.write_text(''.join(f'{key}={values[key]}\n' for key in sorted(values)), encoding='utf-8')
               os.chmod(sync_env, 0o600)
 
-          for name in ('docker-compose.yml', 'sync', 'ota-signal'):
+          for name in ('docker-compose.yml', 'sync'):
               target = install / name
               source = staging / name
               if target.is_dir():
@@ -125,17 +116,14 @@ jobs:
                   shutil.copytree(source, target)
               else:
                   shutil.copy2(source, target)
-          shutil.copy2(staging / 'ota.env', install / 'ota.env')
           ubuntu = pwd.getpwnam('ubuntu')
           os.chown(sync_env, ubuntu.pw_uid, ubuntu.pw_gid)
-          os.chown(install / 'ota.env', ubuntu.pw_uid, ubuntu.pw_gid)
           os.chmod(sync_env, 0o600)
-          os.chmod(install / 'ota.env', 0o600)
           PY
           )"
           ssh "${ssh_opts[@]}" "$target" "printf '%s' '$prepare_script' | base64 --decode > /tmp/prepare-tempo-services.py && sudo -n python3 /tmp/prepare-tempo-services.py"
 
-      - name: Migrate sync and OTA into one Compose project
+      - name: Deploy sync service and remove obsolete OTA signal
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
@@ -149,15 +137,12 @@ jobs:
             old_signal_config="/home/ubuntu/.tempo-ota-signal/docker-compose.yml"
 
             cd "$install_root"
-            docker compose build sync ota-signal
+            docker compose build sync
 
             rollback() {
               docker compose down --remove-orphans || true
               if [ -n "$old_sync_config" ] && [ -f "$old_sync_config" ]; then
                 docker compose --env-file "$install_root/sync.env" -p qingxu -f "$old_sync_config" up -d
-              fi
-              if [ -f "$old_signal_config" ]; then
-                docker compose --env-file "$install_root/ota.env" -p tempo-ota-signal -f "$old_signal_config" up -d
               fi
             }
             trap rollback ERR
@@ -170,11 +155,10 @@ jobs:
             fi
             docker compose up -d --remove-orphans
             curl --fail --silent --show-error --retry 15 --retry-delay 2 http://127.0.0.1:8080/health
-            curl --fail --silent --show-error --retry 15 --retry-delay 2 http://127.0.0.1:8787/health
             trap - ERR
           '
 
-      - name: Ensure OpenResty routes
+      - name: Remove obsolete OTA OpenResty routes
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
@@ -197,36 +181,9 @@ jobs:
           if not candidates:
               raise SystemExit('Unable to locate the todo.darker.one OpenResty vhost')
           path, text = sorted(candidates, key=lambda item: len(str(item[0])))[0]
-          block = r'''    # tempo-services begin
-              location = /api/ota/events {
-                  proxy_pass http://127.0.0.1:8787/v1/events;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  proxy_read_timeout 75s;
-                  proxy_send_timeout 10s;
-                  proxy_buffering off;
-              }
-              location = /api/ota/publish {
-                  proxy_pass http://127.0.0.1:8787/v1/publish;
-                  proxy_http_version 1.1;
-                  proxy_set_header Authorization $http_authorization;
-                  proxy_set_header Content-Type $content_type;
-              }
-              location = /api/ota/health {
-                  proxy_pass http://127.0.0.1:8787/health;
-                  proxy_http_version 1.1;
-              }
-              # tempo-services end
-          '''
           old = re.compile(r'\s*# tempo-(?:ota-signal|services) begin.*?# tempo-(?:ota-signal|services) end\s*', re.S)
           if old.search(text):
-              text = old.sub('\n' + block, text, count=1)
-          else:
-              closing = text.rfind('}')
-              if closing < 0:
-                  raise SystemExit(f'No closing server brace in {path}')
-              text = text[:closing] + '\n' + block + text[closing:]
+              text = old.sub('\n', text, count=1)
           backup = path.with_suffix(path.suffix + '.tempo-backup')
           shutil.copy2(path, backup)
           path.write_text(text, encoding='utf-8')
@@ -305,8 +262,4 @@ jobs:
         run: |
           set -euo pipefail
           docs_html="$(curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 https://todo.darker.one/)"
-          health_json="$(curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 https://todo.darker.one/api/ota/health)"
           grep -q '<title>Tempo' <<< "$docs_html"
-          grep -q '"ok":true' <<< "$health_json"
-          status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST https://todo.darker.one/api/ota/publish)"
-          test "$status" = "401"

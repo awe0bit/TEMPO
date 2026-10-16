@@ -55,7 +55,7 @@ echo "$TOKEN"
 
 请立即把 `$TOKEN` 保存到密码管理器。服务端不会通过接口返回该密钥，遗失后只能更换密钥并重新配置所有设备。
 
-如果同时维护 Tempo 官方 iOS OTA 信号服务，使用仓库中的 [`deploy/tempo-services`](https://github.com/awe0bit/Tempo/tree/main/deploy/tempo-services) 编排。它把同步与 OTA 信号放进同一个 `tempo-services` 项目；生产工作流会将其注册到 1Panel 的“容器 → 编排”，配置文件固定在 `/opt/1panel/docker/compose/tempo-services`。普通自托管用户只部署本节的同步服务即可。
+生产服务器可使用仓库中的 [`deploy/tempo-services`](https://github.com/awe0bit/Tempo/tree/main/deploy/tempo-services) 编排。生产工作流会将同步服务注册到 1Panel 的“容器 → 编排”，配置文件固定在 `/opt/1panel/docker/compose/tempo-services`。
 
 ## 环境变量
 

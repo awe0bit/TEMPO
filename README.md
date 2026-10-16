@@ -122,8 +122,7 @@ apps/apple/          SwiftUI iOS / macOS 客户端与 XcodeGen 工程定义
 apps/android/        基于 Flowtime 重构的独立 Flutter Android 客户端
 apps/flutter/        Flutter Windows 客户端
 services/sync/       Go 同步与可选 AI 代理服务
-services/ota-signal/ iOS 前台 OTA 发布信号服务
-deploy/tempo-services/ 生产服务器上的统一 1Panel Compose 编排
+deploy/tempo-services/ 生产服务器上的同步服务 1Panel Compose 编排
 scripts/ios/         iOS 扩展与签名辅助脚本
 scripts/windows/     Windows 安装包配置
 docs/                产品、架构、协议、部署与签名文档
