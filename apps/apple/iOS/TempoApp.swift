@@ -70,7 +70,6 @@ private struct iOSRootView: View {
         }
         .frame(height: 49 + geometry.safeAreaInsets.bottom)
         .opacity(runtimeTabVisibility)
-        .offset(y: (1 - runtimeTabVisibility) * (57 + geometry.safeAreaInsets.bottom))
         .allowsHitTesting(runtimeTabVisibility > 0.98 && !showingLaunchExperience)
         .accessibilityHidden(runtimeTabVisibility < 0.98)
 

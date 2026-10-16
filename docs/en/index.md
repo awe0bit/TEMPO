@@ -19,7 +19,7 @@ Tempo works offline. Sync and AI features are optional, and you can host the syn
 | --- | --- |
 | Run your own sync server | [Self-hosted sync](/en/DEPLOYMENT) |
 | Configure clients and integrations | [Configuration](/en/CONFIGURATION) |
-| Download the latest build | [GitHub Releases](https://github.com/FelixZoe/TEMPO/releases/latest) |
+| Download the latest build | [GitHub Releases](https://github.com/awe0bit/Tempo/releases/latest) |
 
 Install the file whose name matches your platform. Releases are platform-specific, so the newest release may not contain builds for every platform. The in-app **Settings → About Tempo** page automatically finds the latest compatible build for the current device.
 

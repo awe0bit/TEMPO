@@ -1,11 +1,10 @@
 import { defineConfig } from 'vitepress'
 
-const repository = 'https://github.com/FelixZoe/TEMPO'
+const repository = 'https://github.com/awe0bit/Tempo'
 const downloads = `${repository}/releases/latest`
 
 const sharedTheme = {
   logo: '/mark.svg',
-  search: { provider: 'local' as const },
   socialLinks: [{ icon: 'github' as const, link: repository }]
 }
 
@@ -13,9 +12,36 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ['meta', { name: 'theme-color', content: '#f7f9fc' }],
-    ['meta', { name: 'color-scheme', content: 'light dark' }]
+    ['meta', { name: 'theme-color', content: '#ffffff' }],
+    ['meta', { name: 'color-scheme', content: 'light dark' }],
+    ['link', { rel: 'icon', href: '/mark.svg', type: 'image/svg+xml' }]
   ],
+  themeConfig: {
+    search: {
+      provider: 'local',
+      options: {
+        locales: {
+          root: {
+            translations: {
+              button: {
+                buttonText: '搜索文档',
+                buttonAriaLabel: '搜索文档'
+              },
+              modal: {
+                noResultsText: '没有找到相关内容',
+                resetButtonTitle: '清除搜索',
+                footer: {
+                  selectText: '选择',
+                  navigateText: '切换',
+                  closeText: '关闭'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   locales: {
     root: {
       label: '简体中文',

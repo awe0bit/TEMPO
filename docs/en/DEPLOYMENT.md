@@ -13,8 +13,8 @@ This guide deploys Tempo's personal sync service on a Linux server. `todo.darker
 ## Start the service
 
 ```bash
-git clone https://github.com/FelixZoe/TEMPO.git
-cd TEMPO
+git clone https://github.com/awe0bit/Tempo.git
+cd Tempo/services/sync
 cp .env.example .env
 
 TOKEN=$(openssl rand -hex 32)
@@ -22,14 +22,15 @@ sed -i "s/^SYNC_TOKEN=.*/SYNC_TOKEN=$TOKEN/" .env
 chmod 600 .env
 
 sudo install -d -m 700 -o 65532 -g 65532 data
-docker compose pull
 docker compose config --quiet
-docker compose up -d
+docker compose up -d --build
 curl -fsS http://127.0.0.1:8080/health
 echo "$TOKEN"
 ```
 
 The health endpoint should return `{"status":"ok"}`. Save the token in a password manager; the server never returns it through an API.
+
+The repository also includes [`deploy/tempo-services`](https://github.com/awe0bit/Tempo/tree/main/deploy/tempo-services) for the production server. It groups sync and the iOS foreground OTA signal into one `tempo-services` Compose project registered in 1Panel. Regular self-hosted installations only need the sync service above.
 
 ## Environment
 

@@ -12,8 +12,8 @@
 
 <p align="center">
   <a href="https://todo.darker.one">开发与部署文档</a> ·
-  <a href="https://github.com/FelixZoe/TEMPO/releases/latest">下载最新版</a> ·
-  <a href="https://github.com/FelixZoe/TEMPO/actions/workflows/build-release.yml">构建状态</a> ·
+  <a href="https://github.com/awe0bit/Tempo/releases/latest">下载最新版</a> ·
+  <a href="https://github.com/awe0bit/Tempo/actions/workflows/build-release.yml">构建状态</a> ·
   <a href="docs/DEPLOYMENT.md">部署同步服务</a> ·
   <a href="docs/DESIGN.md">设计规范</a>
 </p>
@@ -70,16 +70,15 @@ App Group：group.one.darker.qingxu
 前置条件：Linux 服务器、Docker Compose v2、一个已经启用 HTTPS 的域名。
 
 ```bash
-git clone https://github.com/FelixZoe/TEMPO.git
-cd TEMPO
+git clone https://github.com/awe0bit/Tempo.git
+cd Tempo/services/sync
 cp .env.example .env
 TOKEN=$(openssl rand -hex 32)
 sed -i "s/^SYNC_TOKEN=.*/SYNC_TOKEN=$TOKEN/" .env
 chmod 600 .env
 sudo install -d -m 700 -o 65532 -g 65532 data
-docker compose pull
 docker compose config --quiet
-docker compose up -d
+docker compose up -d --build
 curl -fsS http://127.0.0.1:8080/health
 echo "$TOKEN"
 ```
@@ -123,6 +122,8 @@ apps/apple/          SwiftUI iOS / macOS 客户端与 XcodeGen 工程定义
 apps/android/        基于 Flowtime 重构的独立 Flutter Android 客户端
 apps/flutter/        Flutter Windows 客户端
 services/sync/       Go 同步与可选 AI 代理服务
+services/ota-signal/ iOS 前台 OTA 发布信号服务
+deploy/tempo-services/ 生产服务器上的统一 1Panel Compose 编排
 scripts/ios/         iOS 扩展与签名辅助脚本
 scripts/windows/     Windows 安装包配置
 docs/                产品、架构、协议、部署与签名文档

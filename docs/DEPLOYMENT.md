@@ -1,6 +1,6 @@
 # Tempo同步服务部署
 
-本文用于在自己的 Linux 服务器上部署 Tempo 同步与可选 AI 代理。客户端安装包从 [GitHub Releases](https://github.com/FelixZoe/TEMPO/releases/latest) 获取；`todo.darker.one` 是开发与部署文档站，不是同步后台所必需。
+本文用于在自己的 Linux 服务器上部署 Tempo 同步与可选 AI 代理。客户端安装包从 [GitHub Releases](https://github.com/awe0bit/Tempo/releases/latest) 获取；`todo.darker.one` 是开发与部署文档站，不是同步后台所必需。
 
 返回：[文档首页](/) · [完整配置指南](/CONFIGURATION) · [系统架构](/ARCHITECTURE) · [同步协议](/SYNC_PROTOCOL)
 
@@ -31,8 +31,8 @@ openssl version
 ## 一键启动
 
 ```bash
-git clone https://github.com/FelixZoe/TEMPO.git
-cd TEMPO
+git clone https://github.com/awe0bit/Tempo.git
+cd Tempo/services/sync
 cp .env.example .env
 
 TOKEN=$(openssl rand -hex 32)
@@ -40,9 +40,8 @@ sed -i "s/^SYNC_TOKEN=.*/SYNC_TOKEN=$TOKEN/" .env
 chmod 600 .env
 
 sudo install -d -m 700 -o 65532 -g 65532 data
-docker compose pull
 docker compose config --quiet
-docker compose up -d
+docker compose up -d --build
 docker compose ps
 curl -fsS http://127.0.0.1:8080/health
 echo "$TOKEN"
@@ -56,9 +55,11 @@ echo "$TOKEN"
 
 请立即把 `$TOKEN` 保存到密码管理器。服务端不会通过接口返回该密钥，遗失后只能更换密钥并重新配置所有设备。
 
+如果同时维护 Tempo 官方 iOS OTA 信号服务，使用仓库中的 [`deploy/tempo-services`](https://github.com/awe0bit/Tempo/tree/main/deploy/tempo-services) 编排。它把同步与 OTA 信号放进同一个 `tempo-services` 项目；生产工作流会将其注册到 1Panel 的“容器 → 编排”，配置文件固定在 `/opt/1panel/docker/compose/tempo-services`。普通自托管用户只部署本节的同步服务即可。
+
 ## 环境变量
 
-仓库根目录 `.env` 由 `compose.yaml` 读取。
+`services/sync/.env` 由同目录的 `docker-compose.yml` 读取。
 
 | 变量 | 默认值 | 用途 |
 | --- | --- | --- |

@@ -17,7 +17,7 @@
 ## 最短部署路径
 
 1. 在 Linux 服务器安装 Docker 与 Docker Compose。
-2. 复制仓库中的 `.env.example` 和 `docker-compose.yml`。
+2. 进入 `services/sync`，复制其中的 `.env.example` 并使用同目录的 `docker-compose.yml`。
 3. 生成 64 位十六进制 `SYNC_TOKEN`，启动服务。
 4. 为服务配置 HTTPS 反向代理。
 5. 在各端填写同一个服务器根地址、同步密钥和不同的设备名称。
@@ -26,6 +26,6 @@
 
 ## 项目入口
 
-- [GitHub 仓库](https://github.com/FelixZoe/TEMPO)
-- [下载最新版本](https://github.com/FelixZoe/TEMPO/releases/latest)
-- [构建状态](https://github.com/FelixZoe/TEMPO/actions)
+- [GitHub 仓库](https://github.com/awe0bit/Tempo)
+- [下载最新版本](https://github.com/awe0bit/Tempo/releases/latest)
+- [构建状态](https://github.com/awe0bit/Tempo/actions)

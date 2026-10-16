@@ -212,7 +212,7 @@ struct SettingsScreen: View {
               )
             }
             #else
-            Link(destination: URL(string: "https://github.com/FelixZoe/TEMPO")!) {
+            Link(destination: URL(string: "https://github.com/awe0bit/Tempo")!) {
               SettingsHomeRow(
                 symbol: "chevron.left.forwardslash.chevron.right",
                 title: "项目、文档与下载",
