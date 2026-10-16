@@ -1,0 +1,151 @@
+name: OTA Signal
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/ota-signal/**"
+      - ".github/workflows/ota-signal.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tempo-ota-signal-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ota-signal
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.0'
+          cache-dependency-path: services/ota-signal/go.mod
+      - run: go mod download
+      - run: go test ./...
+      - run: go vet ./...
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY_BASE64: ${{ secrets.DEPLOY_SSH_KEY_BASE64 }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$DEPLOY_SSH_KEY_BASE64" | base64 --decode > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy signal service and reverse proxy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          OTA_SIGNAL_TOKEN: ${{ secrets.OTA_SIGNAL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$OTA_SIGNAL_TOKEN"
+          target="ubuntu@$DEPLOY_HOST"
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=30)
+          remote_root="/home/ubuntu/.tempo-ota-signal"
+
+          ssh "${ssh_opts[@]}" "$target" "mkdir -p '$remote_root'"
+          tar -C services/ota-signal -czf - . | ssh "${ssh_opts[@]}" "$target" "tar -xzf - -C '$remote_root'"
+          token_base64="$(printf '%s' "$OTA_SIGNAL_TOKEN" | base64 -w 0)"
+          ssh "${ssh_opts[@]}" "$target" "umask 077; printf '%s' '$token_base64' | base64 --decode | sed 's/^/OTA_SIGNAL_TOKEN=/' > '$remote_root/.env'"
+          ssh "${ssh_opts[@]}" "$target" "cd '$remote_root' && docker compose up -d --build --remove-orphans"
+          ssh "${ssh_opts[@]}" "$target" "curl --fail --silent --show-error --retry 10 --retry-delay 2 http://127.0.0.1:8787/health"
+
+          proxy_script="$(base64 -w 0 <<'PY'
+          import re
+          import shutil
+          from pathlib import Path
+
+          roots = [
+              Path('/opt/1panel/apps/openresty/openresty/conf'),
+              Path('/opt/1panel/www/sites/todo.darker.one'),
+          ]
+          candidates = []
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*.conf'):
+                  try:
+                      text = path.read_text(encoding='utf-8')
+                  except (OSError, UnicodeDecodeError):
+                      continue
+                  if re.search(r'\bserver_name\b[^;]*\btodo\.darker\.one\b', text):
+                      candidates.append((path, text))
+          if not candidates:
+              raise SystemExit('Unable to locate the todo.darker.one OpenResty vhost')
+
+          path, text = sorted(candidates, key=lambda item: len(str(item[0])))[0]
+          begin = '# tempo-ota-signal begin'
+          end = '# tempo-ota-signal end'
+          block = r'''    # tempo-ota-signal begin
+              location = /api/ota/events {
+                  proxy_pass http://127.0.0.1:8787/v1/events;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
+                  proxy_read_timeout 75s;
+                  proxy_send_timeout 10s;
+                  proxy_buffering off;
+              }
+              location = /api/ota/publish {
+                  proxy_pass http://127.0.0.1:8787/v1/publish;
+                  proxy_http_version 1.1;
+                  proxy_set_header Authorization $http_authorization;
+                  proxy_set_header Content-Type $content_type;
+              }
+              location = /api/ota/health {
+                  proxy_pass http://127.0.0.1:8787/health;
+                  proxy_http_version 1.1;
+              }
+              # tempo-ota-signal end
+          '''
+          if begin in text:
+              pattern = re.compile(r'\s*# tempo-ota-signal begin.*?# tempo-ota-signal end\s*', re.S)
+              text = pattern.sub('\n' + block, text, count=1)
+          else:
+              closing = text.rfind('}')
+              if closing < 0:
+                  raise SystemExit(f'No closing server brace in {path}')
+              text = text[:closing] + '\n' + block + text[closing:]
+
+          backup = path.with_suffix(path.suffix + '.tempo-backup')
+          shutil.copy2(path, backup)
+          path.write_text(text, encoding='utf-8')
+          Path('/tmp/tempo-ota-vhost-path').write_text(str(path), encoding='utf-8')
+          print(path)
+          PY
+          )"
+          ssh "${ssh_opts[@]}" "$target" "printf '%s' '$proxy_script' | base64 --decode > /tmp/install-tempo-ota-proxy.py && (python3 /tmp/install-tempo-ota-proxy.py || sudo -n python3 /tmp/install-tempo-ota-proxy.py)"
+          ssh "${ssh_opts[@]}" "$target" '
+            set -euo pipefail
+            container="$(docker ps --format "{{.Names}} {{.Image}}" | awk "tolower(\$0) ~ /openresty/ {print \$1; exit}")"
+            test -n "$container"
+            vhost="$(cat /tmp/tempo-ota-vhost-path)"
+            if ! docker exec "$container" openresty -t; then
+              (cp "$vhost.tempo-backup" "$vhost" || sudo -n cp "$vhost.tempo-backup" "$vhost")
+              docker exec "$container" openresty -t
+              exit 1
+            fi
+            docker exec "$container" openresty -s reload
+          '
+      - name: Verify public signal endpoint
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 2 \
+            https://todo.darker.one/api/ota/health | grep -q '"ok":true'
+          status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST https://todo.darker.one/api/ota/publish)"
+          test "$status" = "401"

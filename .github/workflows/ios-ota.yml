@@ -64,8 +64,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -E 'Updates\.(reloadAsync|checkForUpdateAsync|fetchUpdateAsync)' src; then
-            echo 'Do not reload Expo Updates from React roots. The native ON_LOAD lifecycle owns automatic OTA adoption.' >&2
+          if grep -R -E 'Updates\.reloadAsync' src; then
+            echo 'Do not force-reload Expo Updates from React roots. Download in the foreground and apply on the next natural launch.' >&2
             exit 1
           fi
       - name: Resolve native runtime version
@@ -85,6 +85,7 @@ jobs:
         working-directory: apps/ios-runtime
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      OTA_SIGNAL_TOKEN: ${{ secrets.OTA_SIGNAL_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -113,6 +114,20 @@ jobs:
       - name: Explain unpublished validation
         if: env.EXPO_TOKEN == ''
         run: echo "OTA export validated. Add EXPO_TOKEN to publish updates."
+      - name: Broadcast foreground update signal
+        if: env.EXPO_TOKEN != '' && env.OTA_SIGNAL_TOKEN != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          channel="${{ github.event.inputs.channel }}"
+          if [[ -z "$channel" ]]; then channel="production"; fi
+          runtime_version="$(tr -d '[:space:]' < runtime-version.txt)"
+          payload="$(jq -n --arg channel "$channel" --arg runtimeVersion "$runtime_version" --arg commit "$GITHUB_SHA" '{channel: $channel, runtimeVersion: $runtimeVersion, commit: $commit}')"
+          curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 2 \
+            --header "Authorization: Bearer $OTA_SIGNAL_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            https://todo.darker.one/api/ota/publish
 
   publish-known-good-update:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'recovery'
@@ -122,6 +137,7 @@ jobs:
         working-directory: apps/ios-runtime
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      OTA_SIGNAL_TOKEN: ${{ secrets.OTA_SIGNAL_TOKEN }}
       RUNTIME_VERSION: ${{ inputs.runtime_version }}
       CHANNEL: ${{ inputs.channel }}
     steps:
@@ -153,3 +169,14 @@ jobs:
             --platform ios \
             --message "recovery-${{ inputs.source_ref }}-for-runtime-${RUNTIME_VERSION}" \
             --non-interactive
+      - name: Broadcast recovery update signal
+        if: env.OTA_SIGNAL_TOKEN != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -n --arg channel "$CHANNEL" --arg runtimeVersion "$RUNTIME_VERSION" --arg commit "$GITHUB_SHA" '{channel: $channel, runtimeVersion: $runtimeVersion, commit: $commit}')"
+          curl --fail --silent --show-error --retry 4 --retry-all-errors --retry-delay 2 \
+            --header "Authorization: Bearer $OTA_SIGNAL_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            https://todo.darker.one/api/ota/publish

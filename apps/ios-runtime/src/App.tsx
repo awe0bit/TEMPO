@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { StatusBar } from 'expo-status-bar';
 
 import { Sheet } from './components/Primitives';
+import { useForegroundOTA } from './hooks/useForegroundOTA';
 import { useTempo } from './hooks/useTempo';
 import { setAppLocale, t } from './i18n';
 import { DeveloperToolsContent } from './screens/DeveloperToolsScreen';
@@ -19,6 +20,7 @@ type RuntimeProps = {
 
 export default function App(props: RuntimeProps) {
   setAppLocale(props.locale);
+  useForegroundOTA();
   const tempo = useTempo(props.route);
   const { snapshot, route, theme, error, clearError, command, consumeCommand } = tempo;
   const [developerToolsVisible, setDeveloperToolsVisible] = useState(false);
