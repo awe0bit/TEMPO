@@ -191,6 +191,16 @@ jobs:
                   query = 'select ' + ','.join(safe) + ' from websites where primary_domain=?'
                   row = connection.execute(query, ('todo.darker.one',)).fetchone()
                   print('WEBSITE_RECORD ' + (dict(row).__repr__() if row else 'missing'))
+              sample_columns = [name for name in ('id', 'primary_domain', 'type', 'alias', 'status', 'protocol', 'site_dir', 'proxy', 'proxy_type') if name in columns]
+              samples = connection.execute('select ' + ','.join(sample_columns) + ' from websites order by id desc limit 8').fetchall()
+              for sample in samples:
+                  print('WEBSITE_SAMPLE ' + dict(sample).__repr__())
+              definition = connection.execute("select sql from sqlite_master where type='table' and name='websites'").fetchone()
+              print('WEBSITE_DEFINITION ' + (definition[0] if definition else 'missing'))
+          if 'composes' in names:
+              rows = connection.execute('select id,name,path,is_pinned from composes order by id').fetchall()
+              for row in rows:
+                  print('COMPOSE_RECORD ' + dict(row).__repr__())
           PY
           )"
           ssh "${ssh_opts[@]}" "$target" "printf '%s' '$db_script' | base64 --decode > /tmp/audit-tempo-1panel.py && sudo -n python3 /tmp/audit-tempo-1panel.py"
