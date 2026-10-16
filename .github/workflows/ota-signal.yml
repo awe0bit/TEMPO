@@ -164,10 +164,33 @@ jobs:
             docker compose ls --format json
             echo "TEMPO_CONTAINERS"
             docker ps --format "{{.Names}}|{{.Image}}|{{.Ports}}" | grep -E "tempo|qingxu" || true
-            echo "WEBSITE_RECORD"
-            sudo -n sqlite3 -header -column /opt/1panel/db/agent.db \
-              "select * from websites where primary_domain = '\''todo.darker.one'\'';" 2>/dev/null || true
-            echo "MANAGEMENT_SCHEMAS"
-            sudo -n sqlite3 /opt/1panel/db/agent.db \
-              "select name || '\''|'\'' || sql from sqlite_master where type = '\''table'\'' and (name like '\''%compose%'\'' or name like '\''%website%'\'');" 2>/dev/null || true
+            echo "SYNC_MOUNTS"
+            docker inspect qingxu-sync-1 --format "{{range .Mounts}}{{.Source}}|{{.Destination}}|{{.Type}}{{println}}{{end}}" || true
+            echo "SYNC_COMPOSE"
+            docker inspect qingxu-sync-1 --format "working_dir={{index .Config.Labels \"com.docker.compose.project.working_dir\"}} config={{index .Config.Labels \"com.docker.compose.project.config_files\"}}" || true
           '
+          db_script="$(base64 -w 0 <<'PY'
+          import sqlite3
+          from pathlib import Path
+
+          database = Path('/opt/1panel/db/agent.db')
+          connection = sqlite3.connect(f'file:{database}?mode=ro', uri=True)
+          connection.row_factory = sqlite3.Row
+          names = [row[0] for row in connection.execute("select name from sqlite_master where type='table' order by name")]
+          print('MANAGEMENT_TABLES')
+          print(','.join(name for name in names if 'website' in name.lower() or 'compose' in name.lower()))
+          for name in names:
+              if 'website' not in name.lower() and 'compose' not in name.lower():
+                  continue
+              columns = [row[1] for row in connection.execute(f'pragma table_info("{name}")')]
+              print(f'SCHEMA {name}: ' + ','.join(columns))
+          if 'websites' in names:
+              columns = [row[1] for row in connection.execute('pragma table_info(websites)')]
+              safe = [name for name in ('id', 'primary_domain', 'type', 'status', 'site_dir', 'alias') if name in columns]
+              if safe:
+                  query = 'select ' + ','.join(safe) + ' from websites where primary_domain=?'
+                  row = connection.execute(query, ('todo.darker.one',)).fetchone()
+                  print('WEBSITE_RECORD ' + (dict(row).__repr__() if row else 'missing'))
+          PY
+          )"
+          ssh "${ssh_opts[@]}" "$target" "printf '%s' '$db_script' | base64 --decode > /tmp/audit-tempo-1panel.py && sudo -n python3 /tmp/audit-tempo-1panel.py"
