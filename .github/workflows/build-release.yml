@@ -76,11 +76,15 @@ jobs:
 
           requested="${REQUESTED_PLATFORM:-auto}"
           apple_scope="all"
+          ota_only=false
           head_subject="$(git log -1 --pretty=%s "$GITHUB_SHA")"
           case "$head_subject" in
             *"(ios):"*|*"[ios-only]"*) apple_scope="ios" ;;
             *"(macos):"*|*"[macos-only]"*) apple_scope="macos" ;;
           esac
+          if [[ "$head_subject" == *"[ota-only]"* ]]; then
+            ota_only=true
+          fi
           if [[ "$GITHUB_REF" == refs/tags/v* || "$requested" == "all" ]]; then
             mark_all_clients
           elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$requested" != "auto" ]]; then
@@ -120,7 +124,12 @@ jobs:
                     macos) build_macos=true ;;
                     *) build_ios=true; build_macos=true ;;
                   esac ;;
-                apps/ios-runtime/package.json|apps/ios-runtime/package-lock.json|apps/ios-runtime/app.config.js|apps/ios-runtime/runtime-version.txt|apps/ios-runtime/scripts/*|apps/ios-runtime/babel.config.js|apps/ios-runtime/metro.config.js)
+                apps/ios-runtime/package.json|apps/ios-runtime/package-lock.json)
+                  # A pure-JavaScript package can ship inside the OTA bundle. The
+                  # explicit marker prevents an unnecessary IPA while native
+                  # dependency changes keep the safe rebuild default.
+                  if [[ "$ota_only" != true ]]; then build_ios=true; fi ;;
+                apps/ios-runtime/app.config.js|apps/ios-runtime/runtime-version.txt|apps/ios-runtime/scripts/*|apps/ios-runtime/babel.config.js|apps/ios-runtime/metro.config.js)
                   build_ios=true ;;
                 apps/flutter/ios/TempoWidgets/*|apps/flutter/ios/Shared/TempoPomodoroAttributes.swift)
                   build_ios=true ;;
