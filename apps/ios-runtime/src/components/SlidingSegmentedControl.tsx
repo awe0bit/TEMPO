@@ -37,8 +37,8 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
       toValue: index,
       useNativeDriver: true,
       stiffness: 340,
-      damping: 31,
-      mass: .72,
+      damping: 29,
+      mass: .68,
     }).start();
   };
 
@@ -75,7 +75,8 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
   };
 
   const inset = 3;
-  const radius = height >= 40 ? 14 : 13;
+  const radius = height / 2;
+  const indicatorRadius = (height - inset * 2) / 2;
   const segmentWidth = width > inset * 2 ? (width - inset * 2) / values.length : 0;
   const translateX = position.interpolate({
     inputRange: values.map((_, index) => index),
@@ -85,7 +86,7 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
   return (
     <View
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      style={[styles.control, { height, borderRadius: radius, backgroundColor: theme.surfaceMuted }, style]}
+      style={[styles.control, { height, borderRadius: radius, backgroundColor: theme.surfaceMuted, borderColor: theme.separator }, style]}
     >
       {segmentWidth > 0 ? (
         <Animated.View
@@ -97,7 +98,7 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
               bottom: inset,
               left: inset,
               width: segmentWidth,
-              borderRadius: radius,
+              borderRadius: indicatorRadius,
               backgroundColor: theme.accent,
               transform: [{ translateX }],
             },
@@ -107,26 +108,59 @@ export function SlidingSegmentedControl<T extends SegmentValue>({
       {values.map((item) => {
         const selected = item === localValue;
         return (
-          <Pressable
+          <SegmentButton
             key={String(item)}
-            accessibilityRole="button"
+            label={label(item)}
             accessibilityLabel={accessibilityLabel?.(item) ?? label(item)}
-            accessibilityState={{ selected }}
+            selected={selected}
+            theme={theme}
             onPress={() => select(item)}
-            style={({ pressed }) => [styles.segment, pressed && styles.pressed]}
-          >
-            <Text numberOfLines={1} style={[styles.label, { color: selected ? '#FFFFFF' : theme.secondary }]}>{label(item)}</Text>
-          </Pressable>
+          />
         );
       })}
     </View>
   );
 }
 
+function SegmentButton({ label, accessibilityLabel, selected, theme, onPress }: {
+  label: string;
+  accessibilityLabel: string;
+  selected: boolean;
+  theme: TempoTheme;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const animate = (toValue: number, immediate = false) => {
+    scale.stopAnimation();
+    if (immediate) {
+      Animated.timing(scale, { toValue, duration: 70, useNativeDriver: true }).start();
+    } else {
+      Animated.spring(scale, { toValue, stiffness: 460, damping: 27, mass: .55, useNativeDriver: true }).start();
+    }
+  };
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      onPressIn={() => animate(.94, true)}
+      onPressOut={() => animate(1)}
+      style={styles.segment}
+    >
+      <Animated.View style={[styles.segmentContent, { transform: [{ scale }] }]}>
+        <Text numberOfLines={1} style={[styles.label, selected && styles.labelSelected, { color: selected ? '#FFFFFF' : theme.secondary }]}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  control: { flexDirection: 'row', overflow: 'hidden' },
-  indicator: { position: 'absolute' },
-  segment: { flex: 1, zIndex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  control: { flexDirection: 'row', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  indicator: { position: 'absolute', shadowColor: '#000000', shadowOpacity: .1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  segment: { flex: 1, zIndex: 1 },
+  segmentContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   label: { fontSize: 13.5, lineHeight: 18, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  pressed: { opacity: .6 },
+  labelSelected: { fontWeight: '700' },
 });
