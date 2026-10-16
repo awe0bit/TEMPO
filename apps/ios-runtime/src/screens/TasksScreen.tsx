@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated, FlatList, Keyboard, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
+  Animated, Keyboard, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SwipeListView } from 'react-native-swipe-list-view';
 
 import { NativeChromeGap, PrimaryButton, Screen, Sheet } from '../components/Primitives';
 import { formatDate, t, weekdayLabels } from '../i18n';
@@ -28,10 +29,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
-  const listRef = useRef<FlatList<TempoTask>>(null);
-  const setTaskSwipeLocked = useCallback((locked: boolean) => {
-    listRef.current?.setNativeProps({ scrollEnabled: !locked });
-  }, []);
 
   useEffect(() => {
     if (command?.type === 'search') {
@@ -60,6 +57,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
     .filter((task) => `${task.title} ${task.notes}`.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a, b) => Number(a.status === 'completed') - Number(b.status === 'completed') || a.createdAt.localeCompare(b.createdAt)),
   [scoped, showCompleted, query]);
+  const shownByID = useMemo(() => new Map(shown.map((task) => [task.id, task])), [shown]);
 
   function openComposer(task?: TempoTask) {
     setEditing(task);
@@ -105,8 +103,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
         {route === 'today' ? <CalendarStrip theme={theme} selected={selectedDate} onSelect={setSelectedDate} progress={calendar} expanded={calendarExpanded} onExpandedChange={setCalendarExpanded} /> : null}
 
         <View style={styles.listPanel}>
-          <FlatList
-            ref={listRef}
+          <SwipeListView<TempoTask>
             data={shown}
             directionalLockEnabled
             keyExtractor={(item) => item.id}
@@ -127,10 +124,37 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 last={index === shown.length - 1}
                 onOpen={() => openComposer(item)}
                 onToggle={() => perform('task.toggle', { id: item.id })}
-                onDelete={() => remove(item)}
-                onSwipeLock={setTaskSwipeLocked}
               />
             )}
+            renderHiddenItem={({ item, index }, rowMap) => (
+              <DeleteBehindRow
+                theme={theme}
+                first={index === 0}
+                last={index === shown.length - 1}
+                onDelete={() => {
+                  rowMap[item.id]?.closeRow();
+                  void remove(item);
+                }}
+              />
+            )}
+            disableRightSwipe
+            rightOpenValue={-88}
+            rightActivationValue={-128}
+            rightActionValue={-460}
+            stopRightSwipe={-156}
+            directionalDistanceChangeThreshold={2}
+            swipeToOpenPercent={42}
+            swipeToClosePercent={38}
+            swipeToOpenVelocityContribution={7}
+            friction={9}
+            tension={65}
+            closeOnRowOpen
+            closeOnScroll
+            useNativeDriver
+            onRightAction={(rowKey) => {
+              const task = shownByID.get(rowKey);
+              if (task) void remove(task);
+            }}
             contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
           />
         </View>
@@ -216,81 +240,29 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : inCurrentMonth ? theme.text : theme.tertiary, opacity: selected || inCurrentMonth ? 1 : .48 }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
-const DELETE_THRESHOLD = 68;
-const MAX_DELETE_DRAG = 116;
-const DELETE_EXIT_DISTANCE = 460;
-const SWIPE_ACTIVATION_DISTANCE = 3;
-
-function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipeLock }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onSwipeLock: (locked: boolean) => void }) {
-  const x = useRef(new Animated.Value(0)).current;
-  const dragStart = useRef(0);
-  const deleting = useRef(false);
-  const swipeActive = useRef(false);
-  const callbacks = useRef({ onDelete, onSwipeLock });
-  callbacks.current = { onDelete, onSwipeLock };
-  const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 280, damping: 28, mass: .72 }).start();
-  const deleteOpacity = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -10, 0], outputRange: [1, .2, 0], extrapolate: 'clamp' });
-  const deleteScale = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -12, 0], outputRange: [1, .72, .68], extrapolate: 'clamp' });
-  const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => {
-    const horizontalDistance = Math.abs(gesture.dx);
-    const verticalDistance = Math.abs(gesture.dy);
-    return gesture.dx <= -SWIPE_ACTIVATION_DISTANCE
-      && horizontalDistance >= verticalDistance * .55;
-  };
-  const pan = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: wantsHorizontalSwipe,
-    onMoveShouldSetPanResponderCapture: wantsHorizontalSwipe,
-    onPanResponderGrant: () => {
-      swipeActive.current = true;
-      callbacks.current.onSwipeLock(true);
-      x.stopAnimation((value) => { dragStart.current = value; });
-    },
-    onPanResponderMove: (_, gesture) => {
-      let next = dragStart.current + gesture.dx;
-      if (next > 0) next *= .12;
-      if (next < -MAX_DELETE_DRAG) next = -MAX_DELETE_DRAG + (next + MAX_DELETE_DRAG) * .28;
-      x.setValue(next);
-    },
-    onPanResponderRelease: (_, gesture) => {
-      swipeActive.current = false;
-      const shouldDelete = gesture.dx <= -DELETE_THRESHOLD || (gesture.dx < -22 && gesture.vx < -.85);
-      if (!shouldDelete) { callbacks.current.onSwipeLock(false); reset(); return; }
-      deleting.current = true;
-      Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 190, useNativeDriver: true }).start(({ finished }) => {
-        callbacks.current.onSwipeLock(false);
-        if (!finished || !deleting.current) return;
-        x.setValue(0);
-        deleting.current = false;
-        callbacks.current.onDelete();
-      });
-    },
-    onPanResponderReject: () => { swipeActive.current = false; callbacks.current.onSwipeLock(false); },
-    onPanResponderTerminate: () => {
-      swipeActive.current = false;
-      callbacks.current.onSwipeLock(false);
-      deleting.current = false;
-      reset();
-    },
-    onPanResponderTerminationRequest: () => !swipeActive.current,
-    onShouldBlockNativeResponder: () => true,
-  }), [x]);
+function TaskRow({ task, theme, first, last, onOpen, onToggle }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void }) {
   const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
-    <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
-      <Animated.View pointerEvents="none" style={[styles.deleteAction, { opacity: deleteOpacity, transform: [{ scale: deleteScale }] }]}><View style={[styles.deleteBubble, { backgroundColor: theme.danger }]}><Text style={styles.deleteLabel}>{t('tasks.delete')}</Text></View></Animated.View>
-      <Animated.View {...pan.panHandlers} style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface, transform: [{ translateX: x }] }]}>
-        <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
-        <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
-          <View style={styles.taskText}>
-            <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
-            {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
-          </View>
-          {task.startAt ? <View style={[styles.dateBadge, { backgroundColor: theme.accentSoft }]}><Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text></View> : null}
-        </Pressable>
-        {!last ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
-      </Animated.View>
+    <View style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
+      <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
+      <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
+        <View style={styles.taskText}>
+          <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
+          {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
+        </View>
+        {task.startAt ? <View style={[styles.dateBadge, { backgroundColor: theme.accentSoft }]}><Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text></View> : null}
+      </Pressable>
+      {!last ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
     </View>
   );
+}
+
+function DeleteBehindRow({ theme, first, last, onDelete }: { theme: TempoTheme; first: boolean; last: boolean; onDelete: () => void }) {
+  return <View style={[styles.deleteBehind, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={onDelete} style={({ pressed }) => [styles.deleteBubble, { backgroundColor: theme.danger, transform: [{ scale: pressed ? .92 : 1 }] }]}>
+      <Text style={styles.deleteLabel}>{t('tasks.delete')}</Text>
+    </Pressable>
+  </View>;
 }
 
 function UndoBanner({ task, theme, bottomInset, onUndo, onDismiss }: { task: TempoTask; theme: TempoTheme; bottomInset: number; onUndo: () => void; onDismiss: () => void }) {
@@ -365,10 +337,9 @@ const styles = StyleSheet.create({
   groupHeader: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
   groupTitle: { flex: 1, fontSize: 15, fontWeight: '600', letterSpacing: -.12 },
   groupCount: { minWidth: 26, height: 24, borderRadius: 12, textAlign: 'center', textAlignVertical: 'center', fontSize: 12, fontWeight: '600' },
-  swipeWrap: { minHeight: 66, overflow: 'hidden' },
   groupTop: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   groupBottom: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  deleteAction: { position: 'absolute', top: 0, right: 8, bottom: 0, width: 60, justifyContent: 'center', alignItems: 'center' },
+  deleteBehind: { minHeight: 66, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingRight: 8, overflow: 'hidden' },
   deleteBubble: { width: 54, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   deleteLabel: { color: '#FFFFFF', fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
   taskRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
