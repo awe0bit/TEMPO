@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated, FlatList, Keyboard, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
@@ -29,6 +29,9 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
   const listRef = useRef<FlatList<TempoTask>>(null);
+  const setTaskSwipeLocked = useCallback((locked: boolean) => {
+    listRef.current?.setNativeProps({ scrollEnabled: !locked });
+  }, []);
 
   useEffect(() => {
     if (command?.type === 'search') {
@@ -125,7 +128,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 onOpen={() => openComposer(item)}
                 onToggle={() => perform('task.toggle', { id: item.id })}
                 onDelete={() => remove(item)}
-                onSwipeLock={(locked) => listRef.current?.setNativeProps({ scrollEnabled: !locked })}
+                onSwipeLock={setTaskSwipeLocked}
               />
             )}
             contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
@@ -216,23 +219,32 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
 const DELETE_THRESHOLD = 68;
 const MAX_DELETE_DRAG = 116;
 const DELETE_EXIT_DISTANCE = 460;
+const SWIPE_ACTIVATION_DISTANCE = 3;
 
 function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipeLock }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onSwipeLock: (locked: boolean) => void }) {
   const x = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
   const deleting = useRef(false);
+  const swipeActive = useRef(false);
+  const callbacks = useRef({ onDelete, onSwipeLock });
+  callbacks.current = { onDelete, onSwipeLock };
   const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 280, damping: 28, mass: .72 }).start();
   const deleteOpacity = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -10, 0], outputRange: [1, .2, 0], extrapolate: 'clamp' });
   const deleteScale = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -12, 0], outputRange: [1, .72, .68], extrapolate: 'clamp' });
   const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => {
-    const horizontal = gesture.dx < -6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * .72;
-    if (horizontal) onSwipeLock(true);
-    return horizontal;
+    const horizontalDistance = Math.abs(gesture.dx);
+    const verticalDistance = Math.abs(gesture.dy);
+    return gesture.dx <= -SWIPE_ACTIVATION_DISTANCE
+      && horizontalDistance >= verticalDistance * .55;
   };
   const pan = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: wantsHorizontalSwipe,
     onMoveShouldSetPanResponderCapture: wantsHorizontalSwipe,
-    onPanResponderGrant: () => x.stopAnimation((value) => { dragStart.current = value; }),
+    onPanResponderGrant: () => {
+      swipeActive.current = true;
+      callbacks.current.onSwipeLock(true);
+      x.stopAnimation((value) => { dragStart.current = value; });
+    },
     onPanResponderMove: (_, gesture) => {
       let next = dragStart.current + gesture.dx;
       if (next > 0) next *= .12;
@@ -240,22 +252,28 @@ function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipe
       x.setValue(next);
     },
     onPanResponderRelease: (_, gesture) => {
+      swipeActive.current = false;
       const shouldDelete = gesture.dx <= -DELETE_THRESHOLD || (gesture.dx < -22 && gesture.vx < -.85);
-      if (!shouldDelete) { onSwipeLock(false); reset(); return; }
+      if (!shouldDelete) { callbacks.current.onSwipeLock(false); reset(); return; }
       deleting.current = true;
       Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 190, useNativeDriver: true }).start(({ finished }) => {
-        onSwipeLock(false);
+        callbacks.current.onSwipeLock(false);
         if (!finished || !deleting.current) return;
         x.setValue(0);
         deleting.current = false;
-        onDelete();
+        callbacks.current.onDelete();
       });
     },
-    onPanResponderReject: () => onSwipeLock(false),
-    onPanResponderTerminate: () => { onSwipeLock(false); deleting.current = false; reset(); },
-    onPanResponderTerminationRequest: () => false,
+    onPanResponderReject: () => { swipeActive.current = false; callbacks.current.onSwipeLock(false); },
+    onPanResponderTerminate: () => {
+      swipeActive.current = false;
+      callbacks.current.onSwipeLock(false);
+      deleting.current = false;
+      reset();
+    },
+    onPanResponderTerminationRequest: () => !swipeActive.current,
     onShouldBlockNativeResponder: () => true,
-  }), [onDelete, onSwipeLock, x]);
+  }), [x]);
   const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
     <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
