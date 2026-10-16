@@ -71,11 +71,9 @@ private struct iOSRootView: View {
             }
             .frame(height: 49 + geometry.safeAreaInsets.bottom)
             .disabled(showingLaunchExperience)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
           }
         }
         .ignoresSafeArea(edges: .bottom)
-        .animation(.smooth(duration: 0.24, extraBounce: 0), value: runtimeNavigationDepth)
 
         if showingLaunchExperience {
           TempoLaunchExperience {

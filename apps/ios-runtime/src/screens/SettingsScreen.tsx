@@ -52,7 +52,7 @@ export function SettingsScreen({ theme, snapshot, perform }: { theme: TempoTheme
         {({ navigation }) => <SettingsHome theme={theme} snapshot={snapshot} openPage={(page) => { setMessage(''); navigation.navigate('detail', { page }); }} />}
       </Stack.Screen>
       <Stack.Screen name="detail" options={({ route }) => ({ title: pageTitle(route.params.page) })}>
-        {({ route }) => <DetailPage page={route.params.page} theme={theme} snapshot={snapshot} perform={perform} message={message} setMessage={setMessage} />}
+        {({ route, navigation }) => <DetailPage navigation={navigation} page={route.params.page} theme={theme} snapshot={snapshot} perform={perform} message={message} setMessage={setMessage} />}
       </Stack.Screen>
     </Stack.Navigator>
   </NavigationContainer>;
@@ -78,11 +78,23 @@ function SettingsHome({ theme, snapshot, openPage }: { theme: TempoTheme; snapsh
   </Screen>;
 }
 
-function DetailPage({ page, theme, snapshot, perform, message, setMessage }: { page: Page; theme: TempoTheme; snapshot: TempoSnapshot; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>; message: string; setMessage: (value: string) => void }) {
+function DetailPage({ navigation, page, theme, snapshot, perform, message, setMessage }: { navigation: any; page: Page; theme: TempoTheme; snapshot: TempoSnapshot; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>; message: string; setMessage: (value: string) => void }) {
   useEffect(() => {
     tempoNative.setNavigationDepth(1);
-    return () => tempoNative.setNavigationDepth(0);
-  }, []);
+    const stopTransitionStart = navigation.addListener('transitionStart', (event: { data: { closing: boolean } }) => {
+      tempoNative.setNavigationDepth(event.data.closing ? 0 : 1);
+    });
+    const stopGestureCancel = navigation.addListener('gestureCancel', () => tempoNative.setNavigationDepth(1));
+    const stopTransitionEnd = navigation.addListener('transitionEnd', (event: { data: { closing: boolean } }) => {
+      if (!event.data.closing) tempoNative.setNavigationDepth(1);
+    });
+    return () => {
+      stopTransitionStart();
+      stopGestureCancel();
+      stopTransitionEnd();
+      tempoNative.setNavigationDepth(0);
+    };
+  }, [navigation]);
   return <Screen theme={theme} backgroundColor={theme.groupedBackground}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><ScrollView style={styles.scroll} alwaysBounceVertical contentInsetAdjustmentBehavior="automatic" keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.detailContent}>{page === 'sync' ? <SyncSettings theme={theme} value={snapshot.sync} perform={perform} setMessage={setMessage} /> : page === 'ai' ? <AISettings theme={theme} value={snapshot.ai} perform={perform} setMessage={setMessage} /> : page === 'focus' ? <FocusSettings theme={theme} value={snapshot.pomodoro} perform={perform} /> : page === 'appearance' ? <AppearanceSettings theme={theme} value={snapshot.preferences?.appearance} perform={perform} /> : page === 'calendar' ? <CalendarSettings theme={theme} value={snapshot.preferences} perform={perform} /> : page === 'modules' ? <ModuleSettings theme={theme} value={snapshot.preferences?.moduleOrder} perform={perform} /> : <AboutSettings theme={theme} value={snapshot.app} perform={perform} setMessage={setMessage} />}{message ? <Text style={[styles.message, { color: theme.secondary }]}>{message}</Text> : null}</ScrollView></KeyboardAvoidingView></Screen>;
 }
 function SyncSettings({ theme, value, perform, setMessage }: any) { const [serverURL, setServerURL] = useState(value?.serverURL ?? ''); const [deviceName, setDeviceName] = useState(value?.deviceName ?? 'iPhone'); const [token, setToken] = useState(''); const [autoSync, setAutoSync] = useState(value?.autoSync ?? true); async function save(test = false) { setMessage(test ? t('settings.testingConnection') : t('settings.saving')); try { const payload = { serverURL, deviceName, token, autoSync }; await perform(test ? 'sync.test' : 'sync.save', payload); setMessage(test ? t('settings.connectionSuccess') : t('settings.savedAutoSync')); } catch { setMessage(t('settings.connectionFailed')); } } return <><Section theme={theme} title={t('settings.server')}><Field theme={theme} label={t('settings.serverURL')} value={serverURL} onChange={setServerURL} placeholder="https://sync.example.com" /><Divider theme={theme} /><Field theme={theme} label={t('settings.deviceName')} value={deviceName} onChange={setDeviceName} /><Divider theme={theme} /><Field theme={theme} label={t('settings.token')} value={token} onChange={setToken} placeholder={value?.hasToken ? t('settings.tokenSavedPlaceholder') : t('settings.tokenPlaceholder')} secure /></Section><Section theme={theme}><ToggleRow theme={theme} title={t('settings.autoSync')} detail={t('settings.autoSyncDetail')} value={autoSync} onValueChange={setAutoSync} /><Divider theme={theme} /><Row theme={theme} title={t('settings.currentStatus')} detail={`${syncLabel(value?.phase, value?.pendingChangeCount ?? 0)} · revision ${value?.revision ?? 0}`} /></Section><Section theme={theme}><ActionRow theme={theme} title={t('settings.saveConfiguration')} onPress={() => save(false)} /><Divider theme={theme} /><ActionRow theme={theme} title={t('settings.testConnection')} onPress={() => save(true)} /><Divider theme={theme} /><ActionRow theme={theme} title={t('settings.syncNow')} onPress={() => perform('sync.now')} /></Section></>; }

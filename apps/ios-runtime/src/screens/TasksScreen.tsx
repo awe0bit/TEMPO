@@ -26,6 +26,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<FlatList<TempoTask>>(null);
 
   useEffect(() => {
     if (command?.type === 'search') {
@@ -38,12 +39,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
     if (command?.type === 'returnToday') setSelectedDate(new Date());
     if (command) consumeCommand();
   }, [command, consumeCommand]);
-
-  useEffect(() => {
-    if (!undo) return;
-    const timer = setTimeout(() => setUndo(undefined), 4200);
-    return () => clearTimeout(timer);
-  }, [undo]);
 
   function setCalendarExpanded(next: boolean) {
     setCalendarExpandedState(next);
@@ -106,6 +101,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
 
         <View style={styles.listPanel}>
           <FlatList
+            ref={listRef}
             data={shown}
             directionalLockEnabled
             keyExtractor={(item) => item.id}
@@ -127,17 +123,14 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 onOpen={() => openComposer(item)}
                 onToggle={() => perform('task.toggle', { id: item.id })}
                 onDelete={() => remove(item)}
+                onSwipeLock={(locked) => listRef.current?.setNativeProps({ scrollEnabled: !locked })}
               />
             )}
             contentContainerStyle={shown.length ? styles.listContent : styles.emptyContent}
           />
         </View>
 
-        {undo ? (
-          <Pressable onPress={() => { perform('task.restore', { id: undo.id }); setUndo(undefined); }} style={[styles.undo, { backgroundColor: theme.text }]}>
-            <Text style={{ color: theme.background, fontWeight: '700' }}>↶  {t('tasks.undoDelete')}</Text>
-          </Pressable>
-        ) : null}
+        {undo ? <UndoBanner key={undo.id} task={undo} theme={theme} onUndo={() => perform('task.restore', { id: undo.id })} onDismiss={() => setUndo(undefined)} /> : null}
       </View>
 
       <Sheet visible={composerVisible} onClose={closeComposer} theme={theme} snapPoints={['68%', '94%']}>
@@ -222,14 +215,18 @@ const DELETE_THRESHOLD = 68;
 const MAX_DELETE_DRAG = 116;
 const DELETE_EXIT_DISTANCE = 460;
 
-function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void }) {
+function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipeLock }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; onDelete: () => void; onSwipeLock: (locked: boolean) => void }) {
   const x = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
   const deleting = useRef(false);
   const reset = () => Animated.spring(x, { toValue: 0, useNativeDriver: true, stiffness: 280, damping: 28, mass: .72 }).start();
   const deleteOpacity = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -10, 0], outputRange: [1, .2, 0], extrapolate: 'clamp' });
   const deleteScale = x.interpolate({ inputRange: [-DELETE_THRESHOLD, -12, 0], outputRange: [1, .72, .68], extrapolate: 'clamp' });
-  const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => gesture.dx < -10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.05;
+  const wantsHorizontalSwipe = (_: unknown, gesture: { dx: number; dy: number }) => {
+    const horizontal = gesture.dx < -6 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * .72;
+    if (horizontal) onSwipeLock(true);
+    return horizontal;
+  };
   const pan = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: wantsHorizontalSwipe,
     onMoveShouldSetPanResponderCapture: wantsHorizontalSwipe,
@@ -242,19 +239,21 @@ function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { tas
     },
     onPanResponderRelease: (_, gesture) => {
       const shouldDelete = gesture.dx <= -DELETE_THRESHOLD || (gesture.dx < -22 && gesture.vx < -.85);
-      if (!shouldDelete) { reset(); return; }
+      if (!shouldDelete) { onSwipeLock(false); reset(); return; }
       deleting.current = true;
       Animated.timing(x, { toValue: -DELETE_EXIT_DISTANCE, duration: 190, useNativeDriver: true }).start(({ finished }) => {
+        onSwipeLock(false);
         if (!finished || !deleting.current) return;
         x.setValue(0);
         deleting.current = false;
         onDelete();
       });
     },
-    onPanResponderTerminate: () => { deleting.current = false; reset(); },
+    onPanResponderReject: () => onSwipeLock(false),
+    onPanResponderTerminate: () => { onSwipeLock(false); deleting.current = false; reset(); },
     onPanResponderTerminationRequest: () => false,
     onShouldBlockNativeResponder: () => true,
-  }), [onDelete, x]);
+  }), [onDelete, onSwipeLock, x]);
   const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
   return (
     <View style={[styles.swipeWrap, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
@@ -271,6 +270,47 @@ function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete }: { tas
         {!last ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
       </Animated.View>
     </View>
+  );
+}
+
+function UndoBanner({ task, theme, onUndo, onDismiss }: { task: TempoTask; theme: TempoTheme; onUndo: () => void; onDismiss: () => void }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const closing = useRef(false);
+
+  function close(completion?: () => void) {
+    if (closing.current) return;
+    closing.current = true;
+    Animated.timing(progress, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
+      if (!finished) return;
+      completion?.();
+      onDismiss();
+    });
+  }
+
+  useEffect(() => {
+    Animated.spring(progress, { toValue: 1, useNativeDriver: true, stiffness: 250, damping: 24, mass: .72 }).start();
+    const timer = setTimeout(() => close(), 3800);
+    return () => clearTimeout(timer);
+  }, [progress]);
+
+  return (
+    <Animated.View style={[styles.undoBanner, {
+      backgroundColor: theme.surfaceElevated,
+      borderColor: theme.separator,
+      opacity: progress,
+      transform: [
+        { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) },
+        { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [.97, 1] }) },
+      ],
+    }]}>
+      <View style={styles.undoText}>
+        <Text style={[styles.undoTitle, { color: theme.text }]}>{t('tasks.deleted')}</Text>
+        <Text numberOfLines={1} style={[styles.undoTask, { color: theme.secondary }]}>{task.title}</Text>
+      </View>
+      <Pressable onPress={() => close(onUndo)} style={({ pressed }) => [styles.undoButton, pressed && { opacity: .52 }]}>
+        <Text style={[styles.undoButtonText, { color: theme.accent }]}>{t('tasks.undo')}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -326,7 +366,12 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 38, lineHeight: 44, fontWeight: '200' },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 10 },
   emptyBody: { fontSize: 14, marginTop: 5 },
-  undo: { position: 'absolute', left: 20, bottom: 23, borderRadius: 20, paddingHorizontal: 16, height: 42, justifyContent: 'center' },
+  undoBanner: { position: 'absolute', left: 18, right: 18, bottom: 18, minHeight: 58, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 16, paddingRight: 8, flexDirection: 'row', alignItems: 'center', shadowColor: '#000000', shadowOpacity: .1, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 5 },
+  undoText: { flex: 1, minWidth: 0, paddingVertical: 9 },
+  undoTitle: { fontSize: 14.5, lineHeight: 19, fontWeight: '600' },
+  undoTask: { fontSize: 12.5, lineHeight: 17, marginTop: 1 },
+  undoButton: { minWidth: 56, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, marginLeft: 8 },
+  undoButtonText: { fontSize: 14.5, lineHeight: 19, fontWeight: '700' },
   sheetBody: { flex: 1, paddingTop: 18 },
   sheetTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -.45, paddingHorizontal: 24, marginBottom: 20 },
   titleInput: { marginHorizontal: 20, height: 60, borderRadius: 24, paddingHorizontal: 20, fontSize: 17 },
