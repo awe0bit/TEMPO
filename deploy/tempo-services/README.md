@@ -11,6 +11,6 @@
 /opt/1panel/docker/compose/tempo-services
 ```
 
-`sync.env`、`ota.env` 和 `/opt/qingxu/sync/data` 不进入 Git。工作流首次迁移时会从正在运行的旧同步容器保留配置和数据，然后把两个服务注册为 1Panel 中的单一 `tempo-services` 编排。
+`sync.env`、`ota.env` 和 `/opt/qingxu/sync/data` 不进入 Git。工作流会从仓库源码构建两个服务；首次迁移时从正在运行的旧同步容器保留配置和数据，然后把它们注册为 1Panel 中的单一 `tempo-services` 编排，不依赖旧的私有 GHCR 镜像。
 
 日常管理只需在 1Panel 的“容器 → 编排”中操作 `tempo-services`。不要删除 `sync.env`、`ota.env` 或 `/opt/qingxu/sync/data`。

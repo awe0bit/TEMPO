@@ -2,7 +2,9 @@ name: tempo-services
 
 services:
   sync:
-    image: ghcr.io/felixzoe/qingxu-sync:latest
+    build:
+      context: ./sync
+    image: tempo-sync:local
     restart: unless-stopped
     env_file:
       - sync.env

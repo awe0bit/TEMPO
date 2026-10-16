@@ -66,8 +66,10 @@ jobs:
           install_root="/opt/1panel/docker/compose/tempo-services"
 
           rm -rf package
-          mkdir -p package/ota-signal
+          mkdir -p package/sync package/ota-signal
           cp deploy/tempo-services/docker-compose.yml package/docker-compose.yml
+          cp services/sync/{Dockerfile,.dockerignore,go.mod} package/sync/
+          cp -R services/sync/{cmd,internal} package/sync/
           cp services/ota-signal/{Dockerfile,.dockerignore,go.mod,go.sum,main.go,main_test.go} package/ota-signal/
           ssh "${ssh_opts[@]}" "$target" "rm -rf '$staging' && mkdir -p '$staging'"
           tar -C package -czf - . | ssh "${ssh_opts[@]}" "$target" "tar -xzf - -C '$staging'"
@@ -112,7 +114,7 @@ jobs:
               sync_env.write_text(''.join(f'{key}={values[key]}\n' for key in sorted(values)), encoding='utf-8')
               os.chmod(sync_env, 0o600)
 
-          for name in ('docker-compose.yml', 'ota-signal'):
+          for name in ('docker-compose.yml', 'sync', 'ota-signal'):
               target = install / name
               source = staging / name
               if target.is_dir():
@@ -147,8 +149,7 @@ jobs:
             old_signal_config="/home/ubuntu/.tempo-ota-signal/docker-compose.yml"
 
             cd "$install_root"
-            docker compose build ota-signal
-            docker compose pull sync
+            docker compose build sync ota-signal
 
             rollback() {
               docker compose down --remove-orphans || true
