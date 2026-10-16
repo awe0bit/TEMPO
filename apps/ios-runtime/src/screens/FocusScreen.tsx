@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { NativeSymbol, NativeTimerDirectionControl, type NativeSymbolName } from '../components/NativeControls';
 import { Screen, Sheet } from '../components/Primitives';
+import { SlidingSegmentedControl } from '../components/SlidingSegmentedControl';
 import { t } from '../i18n';
 import type { TempoTheme } from '../theme';
 import type { PomodoroState, TempoCommand } from '../types';
@@ -28,7 +29,7 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
       <View style={styles.timerChrome}>
         <NativeTimerDirectionControl
           value={state.timerDirection}
-          onChange={(direction) => void perform('pomodoro.direction', { direction })}
+          onChange={(direction) => perform('pomodoro.direction', { direction })}
         />
       </View>
       <View style={styles.timerBody}>
@@ -89,7 +90,7 @@ function WeeklyTrend({ theme, history }: { theme: TempoTheme; history: PomodoroS
   const peak = Math.max(1, ...days.map((day) => day.minutes));
   return <View style={[styles.trendCard, { backgroundColor: theme.surface }]}>{days.map((day) => { const active = day.minutes > 0; return <View key={day.date.toDateString()} style={styles.trendColumn}><Text style={[styles.trendValue, { color: active ? theme.text : theme.tertiary }]}>{active ? day.minutes : '·'}</Text><View style={[styles.barTrack, { backgroundColor: theme.surfaceMuted }]}><View style={[styles.barFill, { backgroundColor: theme.accent, height: active ? Math.max(8, Math.round(day.minutes / peak * 70)) : 4, opacity: active ? 1 : .25 }]} /></View><Text style={[styles.dayLabel, { color: theme.secondary }]}>{day.date.toLocaleDateString(undefined, { weekday: 'narrow' })}</Text></View>; })}</View>;
 }
-function OptionRow({ theme, label, values, selected, accessibilityLabel, onSelect }: { theme: TempoTheme; label: string; values: number[]; selected: number; accessibilityLabel: (value: number) => string; onSelect: (value: number) => void }) { return <View style={styles.optionRow}><Text style={[styles.optionLabel, { color: theme.text }]}>{label}</Text><View style={[styles.optionControl, { backgroundColor: theme.surfaceMuted }]}>{values.map((value) => { const active = value === selected; return <Pressable key={value} accessibilityRole="button" accessibilityLabel={accessibilityLabel(value)} accessibilityState={{ selected: active }} onPress={() => onSelect(value)} style={({ pressed }) => [styles.option, active && { backgroundColor: theme.accent }, pressed && styles.optionPressed]}><Text style={[styles.optionText, { color: active ? '#FFFFFF' : theme.secondary }]}>{value}</Text></Pressable>; })}</View></View>; }
+function OptionRow({ theme, label, values, selected, accessibilityLabel, onSelect }: { theme: TempoTheme; label: string; values: number[]; selected: number; accessibilityLabel: (value: number) => string; onSelect: (value: number) => void | Promise<unknown> }) { return <View style={styles.optionRow}><Text style={[styles.optionLabel, { color: theme.text }]}>{label}</Text><SlidingSegmentedControl theme={theme} values={values} value={selected} label={String} accessibilityLabel={accessibilityLabel} onChange={onSelect} style={styles.optionControl} /></View>; }
 function modeTitle(mode: PomodoroState['mode']) { return mode === 'focus' ? t('focus.focus') : mode === 'shortBreak' ? t('focus.shortBreak') : t('focus.longBreak'); }
 function formatTime(seconds: number) { const safe = Math.max(0, seconds); return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`; }
 function formatFocusDuration(seconds: number) { return seconds < 3600 ? t('focus.minutes', { count: Math.round(seconds / 60) }) : t('focus.hours', { count: Math.round(seconds / 360) / 10 }); }
@@ -131,9 +132,6 @@ const styles = StyleSheet.create({
   settingsGroup: { borderRadius: 18, overflow: 'hidden' },
   optionRow: { minHeight: 60, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   optionLabel: { fontSize: 16, lineHeight: 22, fontWeight: '500', flexShrink: 1 },
-  optionControl: { flex: 1, minWidth: 168, maxWidth: 204, height: 36, borderRadius: 18, padding: 3, flexDirection: 'row' },
-  option: { flex: 1, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  optionText: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  optionPressed: { opacity: .72, transform: [{ scale: .94 }] },
+  optionControl: { flex: 1, minWidth: 168, maxWidth: 204 },
   settingDivider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
 });

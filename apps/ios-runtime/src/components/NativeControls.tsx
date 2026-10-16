@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { Host, Image, Picker, Text } from '@expo/ui/swift-ui';
 import { frame, pickerStyle, tag } from '@expo/ui/swift-ui/modifiers';
 
@@ -21,14 +21,34 @@ export function NativeSymbol({ name, color, size = 25 }: {
 
 export function NativeTimerDirectionControl({ value, onChange }: {
   value: TimerDirection;
-  onChange: (value: TimerDirection) => void;
+  onChange: (value: TimerDirection) => void | Promise<unknown>;
 }) {
+  const [selection, setSelection] = useState(value);
+  const pending = useRef<TimerDirection | undefined>(undefined);
+
+  useEffect(() => {
+    if (pending.current) {
+      if (pending.current === value) pending.current = undefined;
+      else return;
+    }
+    setSelection(value);
+  }, [value]);
+
   return (
     <Host style={{ width: 196, height: 48 }} useViewportSizeMeasurement>
       <Picker
-        selection={value}
+        selection={selection}
         onSelectionChange={(selection) => {
-          if (selection === 'countdown' || selection === 'countUp') onChange(selection);
+          if (selection !== 'countdown' && selection !== 'countUp') return;
+          pending.current = selection;
+          setSelection(selection);
+          const result = onChange(selection);
+          if (result && typeof (result as Promise<unknown>).catch === 'function') {
+            void (result as Promise<unknown>).catch(() => {
+              pending.current = undefined;
+              setSelection(value);
+            });
+          }
         }}
         modifiers={[pickerStyle('segmented'), frame({ maxWidth: 1000 })]}
       >
