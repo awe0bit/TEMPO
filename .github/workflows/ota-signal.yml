@@ -154,19 +154,19 @@ jobs:
             rollback() {
               docker compose down --remove-orphans || true
               if [ -n "$old_sync_config" ] && [ -f "$old_sync_config" ]; then
-                docker compose -p qingxu -f "$old_sync_config" up -d
+                docker compose --env-file "$install_root/sync.env" -p qingxu -f "$old_sync_config" up -d
               fi
               if [ -f "$old_signal_config" ]; then
-                docker compose -p tempo-ota-signal -f "$old_signal_config" up -d
+                docker compose --env-file "$install_root/ota.env" -p tempo-ota-signal -f "$old_signal_config" up -d
               fi
             }
             trap rollback ERR
 
             if [ -n "$old_sync_config" ] && [ -f "$old_sync_config" ]; then
-              docker compose -p qingxu -f "$old_sync_config" down
+              docker compose --env-file "$install_root/sync.env" -p qingxu -f "$old_sync_config" down
             fi
             if [ -f "$old_signal_config" ]; then
-              docker compose -p tempo-ota-signal -f "$old_signal_config" down
+              docker compose --env-file "$install_root/ota.env" -p tempo-ota-signal -f "$old_signal_config" down
             fi
             docker compose up -d --remove-orphans
             curl --fail --silent --show-error --retry 15 --retry-delay 2 http://127.0.0.1:8080/health
