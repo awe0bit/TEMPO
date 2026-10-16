@@ -138,8 +138,6 @@ func (a *api) events(response http.ResponseWriter, request *http.Request) {
 			if err := connection.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
-		case <-request.Context().Done():
-			return
 		}
 	}
 }

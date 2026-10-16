@@ -149,3 +149,25 @@ jobs:
             https://todo.darker.one/api/ota/health | grep -q '"ok":true'
           status="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST https://todo.darker.one/api/ota/publish)"
           test "$status" = "401"
+      - name: Report 1Panel management state
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          target="ubuntu@$DEPLOY_HOST"
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=30)
+          ssh "${ssh_opts[@]}" "$target" '
+            set -euo pipefail
+            echo "PANEL_VERSION"
+            (1pctl version || sudo -n 1pctl version || true) 2>/dev/null
+            echo "COMPOSE_PROJECTS"
+            docker compose ls --format json
+            echo "TEMPO_CONTAINERS"
+            docker ps --format "{{.Names}}|{{.Image}}|{{.Ports}}" | grep -E "tempo|qingxu" || true
+            echo "WEBSITE_RECORD"
+            sudo -n sqlite3 -header -column /opt/1panel/db/agent.db \
+              "select * from websites where primary_domain = '\''todo.darker.one'\'';" 2>/dev/null || true
+            echo "MANAGEMENT_SCHEMAS"
+            sudo -n sqlite3 /opt/1panel/db/agent.db \
+              "select name || '\''|'\'' || sql from sqlite_master where type = '\''table'\'' and (name like '\''%compose%'\'' or name like '\''%website%'\'');" 2>/dev/null || true
+          '
