@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { Sheet } from './components/Primitives';
@@ -36,7 +37,7 @@ export default function App(props: RuntimeProps) {
   }, [developerToolsVisible, foregroundOTA.checkNow]);
 
   return (
-    <View style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
+    <SafeAreaProvider style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       {snapshot ? <RouteView tempo={tempo} /> : <View style={styles.loading}><ActivityIndicator color={theme.accent} /></View>}
       {error ? <Pressable accessibilityRole="button" accessibilityLabel={t('app.closeError')} onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
@@ -49,7 +50,7 @@ export default function App(props: RuntimeProps) {
         </View>
         <DeveloperToolsContent theme={theme} snapshot={snapshot} foregroundOTA={foregroundOTA} />
       </Sheet> : null}
-    </View>
+    </SafeAreaProvider>
   );
 }
 

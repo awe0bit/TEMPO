@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated, FlatList, Keyboard, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NativeChromeGap, PrimaryButton, Screen, Sheet } from '../components/Primitives';
 import { formatDate, t, weekdayLabels } from '../i18n';
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function TasksScreen({ route, theme, tasks, command, consumeCommand, perform }: Props) {
+  const safeAreaInsets = useSafeAreaInsets();
   const [composerVisible, setComposerVisible] = useState(false);
   const [editing, setEditing] = useState<TempoTask>();
   const [draftTitle, setDraftTitle] = useState('');
@@ -130,7 +132,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
           />
         </View>
 
-        {undo ? <UndoBanner key={undo.id} task={undo} theme={theme} onUndo={() => perform('task.restore', { id: undo.id })} onDismiss={() => setUndo(undefined)} /> : null}
+        {undo ? <UndoBanner key={undo.id} task={undo} theme={theme} bottomInset={safeAreaInsets.bottom} onUndo={() => perform('task.restore', { id: undo.id })} onDismiss={() => setUndo(undefined)} /> : null}
       </View>
 
       <Sheet visible={composerVisible} onClose={closeComposer} theme={theme} snapPoints={['68%', '94%']}>
@@ -273,7 +275,7 @@ function TaskRow({ task, theme, first, last, onOpen, onToggle, onDelete, onSwipe
   );
 }
 
-function UndoBanner({ task, theme, onUndo, onDismiss }: { task: TempoTask; theme: TempoTheme; onUndo: () => void; onDismiss: () => void }) {
+function UndoBanner({ task, theme, bottomInset, onUndo, onDismiss }: { task: TempoTask; theme: TempoTheme; bottomInset: number; onUndo: () => void; onDismiss: () => void }) {
   const progress = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
 
@@ -295,6 +297,7 @@ function UndoBanner({ task, theme, onUndo, onDismiss }: { task: TempoTask; theme
 
   return (
     <Animated.View style={[styles.undoBanner, {
+      bottom: 49 + bottomInset + 12,
       backgroundColor: theme.surfaceElevated,
       borderColor: theme.separator,
       opacity: progress,
@@ -366,7 +369,7 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 38, lineHeight: 44, fontWeight: '200' },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 10 },
   emptyBody: { fontSize: 14, marginTop: 5 },
-  undoBanner: { position: 'absolute', left: 18, right: 18, bottom: 18, minHeight: 58, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 16, paddingRight: 8, flexDirection: 'row', alignItems: 'center', shadowColor: '#000000', shadowOpacity: .1, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 5 },
+  undoBanner: { position: 'absolute', left: 18, right: 18, zIndex: 20, minHeight: 58, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 16, paddingRight: 8, flexDirection: 'row', alignItems: 'center', shadowColor: '#000000', shadowOpacity: .1, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 5 },
   undoText: { flex: 1, minWidth: 0, paddingVertical: 9 },
   undoTitle: { fontSize: 14.5, lineHeight: 19, fontWeight: '600' },
   undoTask: { fontSize: 12.5, lineHeight: 17, marginTop: 1 },
