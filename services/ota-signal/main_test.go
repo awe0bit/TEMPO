@@ -26,6 +26,13 @@ func TestPublishBroadcastsToWebSocketClients(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
+	deadline := time.Now().Add(time.Second)
+	for api.hub.count() != 1 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if api.hub.count() != 1 {
+		t.Fatal("websocket client was not registered")
+	}
 
 	body := []byte(`{"channel":"production","runtimeVersion":"0.6.7","commit":"abc123"}`)
 	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/publish", bytes.NewReader(body))
