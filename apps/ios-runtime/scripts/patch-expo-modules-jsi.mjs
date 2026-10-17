@@ -91,9 +91,39 @@ swipeRowPatched = swipeRowPatched.replace(
     }`,
 );
 
+swipeRowPatched = swipeRowPatched.replace(
+  `    manuallySwipeRow(toValue, onAnimationEnd) {
+        Animated.spring(this._translateX, {
+            toValue,
+            friction: this.props.friction,
+            tension: this.props.tension,
+            restSpeedThreshold: this.props.restSpeedThreshold,
+            restDisplacementThreshold: this.props.restDisplacementThreshold,
+            useNativeDriver: this.props.useNativeDriver,
+        }).start(() => {`,
+  `    manuallySwipeRow(toValue, onAnimationEnd) {
+        const isActionExit = Math.abs(toValue) > 200;
+        const animation = isActionExit
+            ? Animated.timing(this._translateX, {
+                  toValue,
+                  duration: 180,
+                  useNativeDriver: this.props.useNativeDriver,
+              })
+            : Animated.spring(this._translateX, {
+                  toValue,
+                  friction: this.props.friction,
+                  tension: this.props.tension,
+                  restSpeedThreshold: this.props.restSpeedThreshold,
+                  restDisplacementThreshold: this.props.restDisplacementThreshold,
+                  useNativeDriver: this.props.useNativeDriver,
+              });
+        animation.start(() => {`,
+);
+
 const swipePatchApplied =
   swipeRowPatched.includes("const SCROLL_LOCK_MILLISECONDS = 64;")
-  && swipeRowPatched.includes("absDx <= absDy * 1.08");
+  && swipeRowPatched.includes("absDx <= absDy * 1.08")
+  && swipeRowPatched.includes("const isActionExit = Math.abs(toValue) > 200;");
 
 if (!swipePatchApplied) {
   throw new Error(`Unexpected react-native-swipe-list-view source in ${swipeRowPath}`);

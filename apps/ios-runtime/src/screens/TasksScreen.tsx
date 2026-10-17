@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated, Keyboard, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
+  Animated, Keyboard, LayoutAnimation, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeListView } from 'react-native-swipe-list-view';
@@ -92,8 +92,14 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   }
 
   async function remove(task: TempoTask) {
-    await perform('task.delete', { id: task.id });
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setUndo(task);
+    try {
+      await perform('task.delete', { id: task.id });
+    } catch (error) {
+      setUndo(undefined);
+      throw error;
+    }
   }
 
   return (
@@ -280,7 +286,7 @@ function DeleteBehindRow({ theme, first, last, rightActionActivated = false, swi
   return <View style={[styles.deleteBehind, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
     <Animated.View style={[styles.deleteBubble, { backgroundColor: rightActionActivated ? theme.danger : theme.surfaceMuted, borderColor: rightActionActivated ? theme.danger : theme.separator, opacity, transform: [{ translateX }, { scale: dragScale }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={onDelete} style={({ pressed }) => [styles.deletePressable, pressed && styles.deletePressed]}>
-        <NativeSymbol name="trash.fill" color={rightActionActivated ? '#FFFFFF' : theme.danger} size={15} />
+        <NativeSymbol name="trash.fill" color={rightActionActivated ? '#FFFFFF' : theme.danger} size={14} containerSize={18} />
         <Text style={[styles.deleteLabel, { color: rightActionActivated ? '#FFFFFF' : theme.danger }]}>{rightActionActivated ? t('tasks.releaseToDelete') : t('tasks.delete')}</Text>
       </Pressable>
     </Animated.View>
@@ -363,9 +369,9 @@ const styles = StyleSheet.create({
   groupBottom: { borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
   deleteBehind: { minHeight: 62, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingRight: 6, overflow: 'hidden' },
   deleteBubble: { width: 64, height: 44, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  deletePressable: { flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  deletePressable: { flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   deletePressed: { opacity: .64, transform: [{ scale: .95 }] },
-  deleteLabel: { fontSize: 10.5, lineHeight: 13, fontWeight: '600' },
+  deleteLabel: { fontSize: 11, lineHeight: 15, fontWeight: '600', marginTop: 1 },
   taskRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 },
   checkbox: { width: 20, height: 20, borderWidth: 1.5, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   check: { color: '#fff', fontWeight: '800' },

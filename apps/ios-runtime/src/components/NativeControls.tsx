@@ -7,13 +7,14 @@ import { t } from '../i18n';
 type TimerDirection = 'countdown' | 'countUp';
 export type NativeSymbolName = NonNullable<ComponentProps<typeof Image>['systemName']>;
 
-export function NativeSymbol({ name, color, size = 25 }: {
+export function NativeSymbol({ name, color, size = 25, containerSize = 40 }: {
   name: NativeSymbolName;
   color: string;
   size?: number;
+  containerSize?: number;
 }) {
   return (
-    <Host style={{ width: 40, height: 40 }} useViewportSizeMeasurement>
+    <Host style={{ width: containerSize, height: containerSize }} useViewportSizeMeasurement>
       <Image systemName={name} size={size} color={color} />
     </Host>
   );
