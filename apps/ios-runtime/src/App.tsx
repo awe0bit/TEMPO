@@ -40,7 +40,7 @@ export default function App(props: RuntimeProps) {
     <SafeAreaProvider style={[styles.safeArea, { backgroundColor: route === 'settings' ? theme.groupedBackground : theme.background }]}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       {snapshot ? <RouteView tempo={tempo} /> : <View style={styles.loading}><ActivityIndicator color={theme.accent} /></View>}
-      {error ? <Pressable accessibilityRole="button" accessibilityLabel={t('app.closeError')} onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.text, opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.background }]}>×</Text></Pressable> : null}
+      {error ? <Pressable accessibilityRole="button" accessibilityLabel={t('app.closeError')} onPress={clearError} style={({ pressed }) => [styles.toast, { backgroundColor: theme.dark ? theme.surfaceElevated : theme.text, borderColor: theme.dark ? theme.separator : 'transparent', opacity: pressed ? .82 : 1 }]}><Text numberOfLines={2} style={[styles.toastText, { color: theme.dark ? theme.text : theme.background }]}>{error}</Text><Text style={[styles.toastClose, { color: theme.dark ? theme.secondary : theme.background }]}>×</Text></Pressable> : null}
       {snapshot ? <Sheet visible={developerToolsVisible} onClose={() => setDeveloperToolsVisible(false)} theme={theme} snapPoints={['82%', '96%']}>
         <View style={styles.sheetHeader}>
           <Text style={[styles.sheetTitle, { color: theme.text }]}>{t('app.developerTools')}</Text>
@@ -66,7 +66,7 @@ function RouteView({ tempo }: { tempo: ReturnType<typeof useTempo> }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  toast: { position: 'absolute', left: 18, right: 18, bottom: 84, zIndex: 100, minHeight: 50, borderRadius: 25, paddingLeft: 18, paddingRight: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: .2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  toast: { position: 'absolute', left: 18, right: 18, bottom: 84, zIndex: 100, minHeight: 50, borderRadius: 25, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 18, paddingRight: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: .28, shadowRadius: 18, shadowOffset: { width: 0, height: 9 } },
   toastText: { flex: 1, fontSize: 14, lineHeight: 19, fontWeight: '600' },
   toastClose: { width: 30, textAlign: 'center', fontSize: 22, fontWeight: '500', opacity: .72 },
   sheetHeader: { height: 58, paddingLeft: 24, paddingRight: 16, flexDirection: 'row', alignItems: 'center' },

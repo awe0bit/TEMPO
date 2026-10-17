@@ -6,7 +6,7 @@ import { radius, spacing, type TempoTheme } from '../theme';
 
 export function Screen({ children, theme, scroll = false, backgroundColor }: PropsWithChildren<{ theme: TempoTheme; scroll?: boolean; backgroundColor?: string }>) {
   const content = <View style={styles.screenContent}>{children}</View>;
-  const color = backgroundColor ?? theme.groupedBackground;
+  const color = backgroundColor ?? theme.background;
   return (
     <View style={[styles.screen, { backgroundColor: color }]}>
       {scroll ? <ScrollView contentContainerStyle={styles.scrollContent}>{content}</ScrollView> : content}
