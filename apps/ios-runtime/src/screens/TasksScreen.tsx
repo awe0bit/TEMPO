@@ -287,7 +287,7 @@ function DeleteBehindRow({ theme, first, last, rightActionActivated = false, swi
   const dragScale = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, -14, 0], outputRange: [1.08, 1, .78, .68], extrapolate: 'clamp' }) ?? 1;
   const translateX = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, -10, 0], outputRange: [0, 0, 16, 22], extrapolate: 'clamp' }) ?? 0;
   const opacity = swipeAnimatedValue?.interpolate({ inputRange: [-76, -12, 0], outputRange: [1, .36, 0], extrapolate: 'clamp' }) ?? 1;
-  return <View style={[styles.deleteBehind, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
+  return <View style={[styles.deleteBehind, first && styles.groupTop, last && styles.groupBottom]}>
     <Animated.View style={[styles.deleteBubble, { backgroundColor: rightActionActivated ? theme.danger : theme.surfaceMuted, borderColor: rightActionActivated ? theme.danger : theme.separator, opacity, transform: [{ translateX }, { scale: dragScale }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={onDelete} style={({ pressed }) => [styles.deletePressable, pressed && styles.deletePressed]}>
         <NativeSymbol name="trash.fill" color={rightActionActivated ? '#FFFFFF' : theme.danger} size={14} containerSize={18} />
@@ -299,32 +299,66 @@ function DeleteBehindRow({ theme, first, last, rightActionActivated = false, swi
 
 function UndoBanner({ task, theme, bottomInset, onUndo, onDismiss }: { task: TempoTask; theme: TempoTheme; bottomInset: number; onUndo: () => void; onDismiss: () => void }) {
   const progress = useRef(new Animated.Value(0)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  function close(completion?: () => void) {
+  function scheduleDismiss(delay = 3800) {
+    if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    dismissTimer.current = setTimeout(() => close(), delay);
+  }
+
+  function close(completion?: () => void, dragged = false) {
     if (closing.current) return;
     closing.current = true;
-    Animated.timing(progress, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
+    if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    Animated.parallel([
+      Animated.timing(progress, { toValue: 0, duration: dragged ? 150 : 180, useNativeDriver: true }),
+      Animated.timing(dragY, { toValue: dragged ? 92 : 0, duration: dragged ? 150 : 180, useNativeDriver: true }),
+    ]).start(({ finished }) => {
       if (!finished) return;
       completion?.();
       onDismiss();
     });
   }
 
+  const pan = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 4 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.15,
+    onPanResponderGrant: () => {
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+      dragY.stopAnimation();
+    },
+    onPanResponderMove: (_, gesture) => dragY.setValue(Math.max(0, gesture.dy)),
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dy > 34 || gesture.vy > .5) {
+        close(undefined, true);
+        return;
+      }
+      Animated.spring(dragY, { toValue: 0, useNativeDriver: true, stiffness: 330, damping: 28, mass: .72 }).start();
+      scheduleDismiss(2600);
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(dragY, { toValue: 0, useNativeDriver: true, stiffness: 330, damping: 28, mass: .72 }).start();
+      scheduleDismiss(2600);
+    },
+  }), [dragY]);
+
   useEffect(() => {
     Animated.spring(progress, { toValue: 1, useNativeDriver: true, stiffness: 250, damping: 24, mass: .72 }).start();
-    const timer = setTimeout(() => close(), 3800);
-    return () => clearTimeout(timer);
+    scheduleDismiss();
+    return () => {
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    };
   }, [progress]);
 
   return (
-    <Animated.View style={[styles.undoBanner, {
+    <Animated.View {...pan.panHandlers} style={[styles.undoBanner, {
       bottom: 49 + bottomInset + 12,
       backgroundColor: theme.surfaceElevated,
       borderColor: theme.separator,
       opacity: progress,
       transform: [
-        { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) },
+        { translateY: Animated.add(progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }), dragY) },
         { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [.97, 1] }) },
       ],
     }]}>
