@@ -165,6 +165,7 @@ final class TempoNativeRegistry {
     case "task.delete":
       guard let task = task(payload.string("id"), in: store) else { throw BridgeError.notFound }
       store.deleteTask(task)
+      taskDeleteFeedback()
       return ["ok": true]
 
     case "task.restore":
@@ -177,6 +178,10 @@ final class TempoNativeRegistry {
     case "pomodoro.toggle":
       pomodoroFeedback()
       store.togglePomodoro()
+      return ["ok": true]
+
+    case "feedback.selection":
+      selectionFeedback()
       return ["ok": true]
     case "pomodoro.reset":
       pomodoroFeedback()
@@ -489,6 +494,22 @@ final class TempoNativeRegistry {
     let feedback = UIImpactFeedbackGenerator(style: .soft)
     feedback.prepare()
     feedback.impactOccurred(intensity: 0.58)
+  }
+
+  private func selectionFeedback() {
+    let defaults = UserDefaults.standard
+    guard defaults.object(forKey: TempoPreferenceKey.haptics) as? Bool ?? true else { return }
+    let feedback = UISelectionFeedbackGenerator()
+    feedback.prepare()
+    feedback.selectionChanged()
+  }
+
+  private func taskDeleteFeedback() {
+    let defaults = UserDefaults.standard
+    guard defaults.object(forKey: TempoPreferenceKey.haptics) as? Bool ?? true else { return }
+    let feedback = UIImpactFeedbackGenerator(style: .medium)
+    feedback.prepare()
+    feedback.impactOccurred(intensity: 0.72)
   }
 
   private func preferenceKey(_ name: String) -> String {

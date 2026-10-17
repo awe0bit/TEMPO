@@ -164,6 +164,9 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
             closeOnRowOpen
             closeOnScroll
             useNativeDriver
+            onRightActionStatusChange={({ isActivated }) => {
+              if (isActivated) void perform('feedback.selection').catch(() => undefined);
+            }}
             onRightAction={(rowKey) => {
               const task = shownByID.get(rowKey);
               if (task) void remove(task);
