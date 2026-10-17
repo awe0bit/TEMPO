@@ -5,6 +5,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeListView } from 'react-native-swipe-list-view';
 
+import { NativeSymbol } from '../components/NativeControls';
 import { NativeChromeGap, PrimaryButton, Screen, Sheet } from '../components/Primitives';
 import { formatDate, t, weekdayLabels } from '../i18n';
 import type { TempoTheme } from '../theme';
@@ -26,7 +27,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   const [searchActive, setSearchActive] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [undo, setUndo] = useState<TempoTask>();
-  const [armedDeleteID, setArmedDeleteID] = useState<string>();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarExpanded, setCalendarExpandedState] = useState(false);
   const calendar = useRef(new Animated.Value(0)).current;
@@ -92,7 +92,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
   }
 
   async function remove(task: TempoTask) {
-    setArmedDeleteID(undefined);
     await perform('task.delete', { id: task.id });
     setUndo(task);
   }
@@ -133,7 +132,6 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
                 theme={theme}
                 first={index === 0}
                 last={index === shown.length - 1}
-                armed={armedDeleteID === item.id}
                 onDelete={() => {
                   const row = rowMap[item.id];
                   if (row) {
@@ -145,22 +143,21 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
               />
             )}
             disableRightSwipe
-            rightOpenValue={-88}
-            rightActivationValue={-128}
+            rightOpenValue={-76}
+            rightActivationValue={-112}
             rightActionValue={-460}
-            stopRightSwipe={-156}
-            directionalDistanceChangeThreshold={2}
-            swipeToOpenPercent={42}
-            swipeToClosePercent={38}
-            swipeToOpenVelocityContribution={7}
-            friction={9}
-            tension={65}
+            stopRightSwipe={-132}
+            directionalDistanceChangeThreshold={6}
+            swipeToOpenPercent={38}
+            swipeToClosePercent={42}
+            swipeToOpenVelocityContribution={6}
+            friction={8}
+            tension={78}
+            restSpeedThreshold={0.5}
+            restDisplacementThreshold={0.5}
             closeOnRowOpen
             closeOnScroll
             useNativeDriver
-            onRightActionStatusChange={({ key, isActivated }) => {
-              setArmedDeleteID((current) => isActivated ? key : current === key ? undefined : current);
-            }}
             onRightAction={(rowKey) => {
               const task = shownByID.get(rowKey);
               if (task) void remove(task);
@@ -250,42 +247,41 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.dateCell, pressed && { opacity: .55 }]}><View style={[styles.dateDot, selected && { backgroundColor: theme.accent }]}><Text style={[styles.dateNumber, { color: selected ? '#fff' : inCurrentMonth ? theme.text : theme.tertiary, opacity: selected || inCurrentMonth ? 1 : .48 }]}>{date.getDate()}</Text></View></Pressable>;
 }
 
-function TaskRow({ task, theme, first, last, onOpen, onToggle }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void }) {
-  const priorityColor = task.priority === 'high' ? theme.danger : task.priority === 'medium' ? theme.warning : theme.accent;
+function TaskRow({ task, theme, first, last, onOpen, onToggle, swipeAnimatedValue }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; swipeAnimatedValue?: Animated.Value }) {
+  const priorityColor = task.priority === 'high' ? theme.accent : theme.secondary;
+  const contentOpacity = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, 0], outputRange: [.9, .96, 1], extrapolate: 'clamp' }) ?? 1;
+  const contentScale = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, 0], outputRange: [.985, .993, 1], extrapolate: 'clamp' }) ?? 1;
   return (
-    <View style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
+    <Animated.View style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface, opacity: contentOpacity, transform: [{ scale: contentScale }] }]}>
       <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
       <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
         <View style={styles.taskText}>
           <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
           {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
         </View>
-        {task.startAt ? <View style={[styles.dateBadge, { backgroundColor: theme.accentSoft }]}><Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text></View> : null}
+        {task.startAt ? <Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text> : null}
       </Pressable>
       {!last ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
-    </View>
+    </Animated.View>
   );
 }
 
-function DeleteBehindRow({ theme, first, last, armed, swipeAnimatedValue, onDelete }: {
+function DeleteBehindRow({ theme, first, last, rightActionActivated = false, swipeAnimatedValue, onDelete }: {
   theme: TempoTheme;
   first: boolean;
   last: boolean;
-  armed: boolean;
+  rightActionActivated?: boolean;
   swipeAnimatedValue?: Animated.Value;
   onDelete: () => void;
 }) {
-  const activation = useRef(new Animated.Value(armed ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.spring(activation, { toValue: armed ? 1 : 0, useNativeDriver: true, stiffness: 430, damping: 25, mass: .58 }).start();
-  }, [activation, armed]);
-  const dragScale = swipeAnimatedValue?.interpolate({ inputRange: [-156, -88, -12, 0], outputRange: [1.08, 1, .8, .72], extrapolate: 'clamp' }) ?? 1;
-  const opacity = swipeAnimatedValue?.interpolate({ inputRange: [-88, -14, 0], outputRange: [1, .45, 0], extrapolate: 'clamp' }) ?? 1;
-  const armedScale = activation.interpolate({ inputRange: [0, 1], outputRange: [1, 1.13] });
+  const dragScale = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, -14, 0], outputRange: [1.08, 1, .78, .68], extrapolate: 'clamp' }) ?? 1;
+  const translateX = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, -10, 0], outputRange: [0, 0, 16, 22], extrapolate: 'clamp' }) ?? 0;
+  const opacity = swipeAnimatedValue?.interpolate({ inputRange: [-76, -12, 0], outputRange: [1, .36, 0], extrapolate: 'clamp' }) ?? 1;
   return <View style={[styles.deleteBehind, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
-    <Animated.View style={[styles.deleteBubble, armed && styles.deleteBubbleArmed, { backgroundColor: theme.danger, opacity, transform: [{ scale: Animated.multiply(dragScale, armedScale) }] }]}>
+    <Animated.View style={[styles.deleteBubble, { backgroundColor: rightActionActivated ? theme.danger : theme.surfaceMuted, borderColor: rightActionActivated ? theme.danger : theme.separator, opacity, transform: [{ translateX }, { scale: dragScale }] }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={t('tasks.delete')} onPress={onDelete} style={({ pressed }) => [styles.deletePressable, pressed && styles.deletePressed]}>
-        <Text style={[styles.deleteLabel, armed && styles.deleteLabelArmed]}>{armed ? t('tasks.releaseToDelete') : t('tasks.delete')}</Text>
+        <NativeSymbol name="trash.fill" color={rightActionActivated ? '#FFFFFF' : theme.danger} size={15} />
+        <Text style={[styles.deleteLabel, { color: rightActionActivated ? '#FFFFFF' : theme.danger }]}>{rightActionActivated ? t('tasks.releaseToDelete') : t('tasks.delete')}</Text>
       </Pressable>
     </Animated.View>
   </View>;
@@ -363,27 +359,24 @@ const styles = StyleSheet.create({
   groupHeader: { height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
   groupTitle: { flex: 1, fontSize: 15, fontWeight: '600', letterSpacing: -.12 },
   groupCount: { minWidth: 26, height: 24, borderRadius: 12, textAlign: 'center', textAlignVertical: 'center', fontSize: 12, fontWeight: '600' },
-  groupTop: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  groupBottom: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  deleteBehind: { minHeight: 66, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingRight: 8, overflow: 'hidden' },
-  deleteBubble: { width: 58, height: 40, borderRadius: 20, shadowColor: '#000000', shadowOpacity: .08, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
-  deleteBubbleArmed: { shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 } },
-  deletePressable: { flex: 1, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  deletePressed: { opacity: .72 },
-  deleteLabel: { color: '#FFFFFF', fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
-  deleteLabelArmed: { fontWeight: '800' },
-  taskRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', paddingLeft: 16 },
-  checkbox: { width: 22, height: 22, borderWidth: 1.5, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  groupTop: { borderTopLeftRadius: 18, borderTopRightRadius: 18 },
+  groupBottom: { borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
+  deleteBehind: { minHeight: 62, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingRight: 6, overflow: 'hidden' },
+  deleteBubble: { width: 64, height: 44, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  deletePressable: { flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  deletePressed: { opacity: .64, transform: [{ scale: .95 }] },
+  deleteLabel: { fontSize: 10.5, lineHeight: 13, fontWeight: '600' },
+  taskRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 },
+  checkbox: { width: 20, height: 20, borderWidth: 1.5, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   check: { color: '#fff', fontWeight: '800' },
-  taskMain: { minHeight: 66, flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 14 },
-  taskText: { flex: 1, paddingVertical: 10 },
+  taskMain: { minHeight: 62, flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 15, borderRadius: 12 },
+  taskText: { flex: 1, paddingVertical: 9 },
   titleLine: { flexDirection: 'row', alignItems: 'center' },
-  priorityDot: { width: 5, height: 5, borderRadius: 3, marginRight: 7 },
-  taskTitle: { flexShrink: 1, fontSize: 16.5, fontWeight: '500', lineHeight: 21 },
-  taskNotes: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  dateBadge: { minWidth: 40, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginLeft: 10, paddingHorizontal: 9 },
-  taskDate: { fontSize: 11.5, fontWeight: '600' },
-  rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 50, right: 14, bottom: 0 },
+  priorityDot: { width: 4, height: 4, borderRadius: 2, marginRight: 7 },
+  taskTitle: { flexShrink: 1, fontSize: 16, fontWeight: '500', lineHeight: 20 },
+  taskNotes: { fontSize: 12.5, lineHeight: 17, marginTop: 2 },
+  taskDate: { fontSize: 11.5, lineHeight: 16, fontWeight: '600', marginLeft: 12 },
+  rowDivider: { position: 'absolute', height: StyleSheet.hairlineWidth, left: 47, right: 15, bottom: 0 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26, paddingBottom: 34 },
   emptyIcon: { fontSize: 38, lineHeight: 44, fontWeight: '200' },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 10 },
