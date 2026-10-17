@@ -121,7 +121,7 @@ function DetailPage({ navigation, page, theme, snapshot, perform, message, setMe
       tempoNative.setNavigationDepth(0);
     };
   }, [navigation, transition.closing, transition.progress]);
-  const content = page === 'sync' ? <SyncSettings theme={theme} value={snapshot.sync} perform={perform} setMessage={setMessage} /> : page === 'ai' ? <AISettings theme={theme} value={snapshot.ai} perform={perform} setMessage={setMessage} /> : page === 'focus' ? <FocusSettings theme={theme} value={snapshot.pomodoro} perform={perform} /> : page === 'appearance' ? <AppearanceSettings theme={theme} value={snapshot.preferences?.appearance} perform={perform} /> : page === 'calendar' ? <CalendarSettings theme={theme} value={snapshot.preferences} perform={perform} /> : page === 'modules' ? <ModuleSettings theme={theme} value={snapshot.preferences?.moduleOrder} perform={perform} /> : <AboutSettings theme={theme} value={snapshot.app} perform={perform} setMessage={setMessage} />;
+  const content = page === 'sync' ? <SyncSettings theme={theme} value={snapshot.sync} perform={perform} setMessage={setMessage} /> : page === 'ai' ? <AISettings theme={theme} value={snapshot.ai} perform={perform} setMessage={setMessage} /> : page === 'focus' ? <FocusSettings theme={theme} value={snapshot.pomodoro} perform={perform} /> : page === 'appearance' ? <AppearanceSettings theme={theme} value={snapshot.preferences?.appearance} perform={perform} /> : page === 'calendar' ? <CalendarSettings theme={theme} value={snapshot.preferences} perform={perform} /> : page === 'modules' ? <ModuleSettings theme={theme} value={snapshot.preferences?.moduleOrder} supportsSelectionFeedback={snapshot.capabilities?.includes('feedback.selection') ?? false} perform={perform} /> : <AboutSettings theme={theme} value={snapshot.app} perform={perform} setMessage={setMessage} />;
 
   return <Screen theme={theme} backgroundColor={theme.groupedBackground}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{page === 'modules' ? <View style={styles.modulePage}>{content}</View> : <ScrollView style={styles.scroll} alwaysBounceVertical contentInsetAdjustmentBehavior="automatic" keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.detailContent}>{content}{message ? <Text style={[styles.message, { color: theme.secondary }]}>{message}</Text> : null}</ScrollView>}</KeyboardAvoidingView></Screen>;
 }
@@ -176,7 +176,7 @@ function FocusSettings({ theme, value, perform }: any) {
 }
 function AppearanceSettings({ theme, value = 'system', perform }: { theme: TempoTheme; value?: 'system' | 'light' | 'dark'; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T> }) { const choices = ['system', 'light', 'dark'] as const; return <Section theme={theme}>{choices.map((choice, index) => <View key={choice}><Row theme={theme} title={appearanceLabel(choice)} onPress={() => perform('preferences.save', { appearance: choice })} right={value === choice ? <NativeSymbol name="checkmark" color={theme.accent} size={17} /> : <View style={styles.choiceMark} />} />{index < choices.length - 1 ? <Divider theme={theme} /> : null}</View>)}</Section>; }
 function CalendarSettings({ theme, value, perform }: any) { const save = (payload: Record<string, boolean>) => perform('preferences.save', payload); return <Section theme={theme}><ToggleRow theme={theme} title={t('settings.weekStartsMonday')} value={value?.weekStartsMonday ?? true} onValueChange={(weekStartsMonday) => save({ weekStartsMonday })} /><Divider theme={theme} /><ToggleRow theme={theme} title={t('settings.showFestivals')} value={value?.showFestivals ?? true} onValueChange={(showFestivals) => save({ showFestivals })} /><Divider theme={theme} /><ToggleRow theme={theme} title={t('settings.showTaskIndicators')} value={value?.showTaskIndicators ?? true} onValueChange={(showTaskIndicators) => save({ showTaskIndicators })} /></Section>; }
-function ModuleSettings({ theme, value, perform }: any) {
+function ModuleSettings({ theme, value, supportsSelectionFeedback, perform }: any) {
   const initial = String(value ?? 'inbox,today,focus,rss,settings').split(',').filter(Boolean);
   const [items, setItems] = useState<string[]>(initial);
 
@@ -210,7 +210,10 @@ function ModuleSettings({ theme, value, perform }: any) {
       title={moduleTitle(item)}
       index={index}
       isActive={isActive}
-      onDragStart={onDragStart}
+      onDragStart={() => {
+        if (supportsSelectionFeedback) void perform('feedback.selection').catch(() => undefined);
+        onDragStart();
+      }}
       onDragEnd={onDragEnd}
       showDivider={index < items.length - 1}
       accessibilityRole="adjustable"
