@@ -134,6 +134,8 @@ export type TempoCommand = {
     | 'navigate'
     | 'search'
     | 'statistics'
+    | 'timerSettings'
+    | 'aiAssistant'
     | 'newTask'
     | 'showCompleted'
     | 'hideCompleted'

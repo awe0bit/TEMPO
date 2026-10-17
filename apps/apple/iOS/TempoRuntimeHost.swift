@@ -91,6 +91,7 @@ struct TempoRuntimeScreen: View {
 }
 
 private struct TempoRuntimeChrome: View {
+  @StateObject private var ambientStore = TodayAmbientStore()
   @State private var searchExpanded = false
   @State private var searchText = ""
   @FocusState private var searchFocused: Bool
@@ -108,13 +109,17 @@ private struct TempoRuntimeChrome: View {
       HStack(spacing: 10) {
         if searchExpanded || route == .inbox || route == .rss {
           searchControl
+        } else if route == .today {
+          weatherButton
         } else if route == .pomodoro {
           chromeButton("chart.xyaxis.line", command: "statistics")
         }
 
         Spacer()
 
-        if route != .settings && route != .pomodoro {
+        if route == .pomodoro {
+          chromeButton("slider.horizontal.3", command: "timerSettings")
+        } else if route != .settings {
           optionsMenu
             .allowsHitTesting(!searchExpanded)
         }
@@ -128,6 +133,44 @@ private struct TempoRuntimeChrome: View {
         closeSearch()
       }
     }
+    .task(id: route) {
+      guard route == .today else { return }
+      await ambientStore.load()
+    }
+  }
+
+  private var weatherButton: some View {
+    Button {
+      Task { await ambientStore.load(force: true) }
+      UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+    } label: {
+      Group {
+        if ambientStore.isLoading {
+          ProgressView()
+            .controlSize(.small)
+        } else {
+          Image(systemName: runtimeWeatherSymbol(
+            ambientStore.weather?.icon ?? "",
+            text: ambientStore.weather?.text ?? ""
+          ))
+          .font(.system(size: 17, weight: .semibold))
+        }
+      }
+      .foregroundStyle(TempoPalette.ink)
+      .frame(width: 48, height: 48)
+      .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .tempoFloatingSurface()
+    .accessibilityLabel(weatherAccessibilityLabel)
+    .accessibilityHint(TempoL10n.string("轻点刷新天气"))
+  }
+
+  private var weatherAccessibilityLabel: String {
+    guard let weather = ambientStore.weather else {
+      return TempoL10n.string(ambientStore.isLoading ? "正在获取天气" : "天气")
+    }
+    return "\(weather.cityName)，\(weather.text)，\(weather.temperature)°"
   }
 
   private var searchControl: some View {
@@ -222,7 +265,7 @@ private struct TempoRuntimeChrome: View {
     }
     .buttonStyle(.plain)
     .tempoFloatingSurface()
-    .accessibilityLabel(TempoL10n.string(command == "search" ? "搜索" : command == "statistics" ? "专注统计" : "更多"))
+    .accessibilityLabel(TempoL10n.string(chromeAccessibilityLabel(command)))
   }
 
   private var optionsMenu: some View {
@@ -234,6 +277,8 @@ private struct TempoRuntimeChrome: View {
         commandButton("显示已完成", symbol: "checkmark.circle", command: "showCompleted")
         commandButton("隐藏已完成", symbol: "circle", command: "hideCompleted")
       case .today:
+        commandButton("AI 助手", symbol: "sparkles", command: "aiAssistant")
+        Divider()
         commandButton("安排任务", symbol: "calendar.badge.plus", command: "newTask")
         commandButton("回到今天", symbol: "calendar", command: "returnToday")
         Divider()
@@ -273,6 +318,26 @@ private struct TempoRuntimeChrome: View {
     TempoNativeRegistry.shared.sendCommand(command)
     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
   }
+
+  private func chromeAccessibilityLabel(_ command: String) -> String {
+    switch command {
+    case "search": "搜索"
+    case "statistics": "专注统计"
+    case "timerSettings": "计时设置"
+    default: "更多"
+    }
+  }
+}
+
+private func runtimeWeatherSymbol(_ icon: String, text: String) -> String {
+  if text.contains("雷") { return "cloud.bolt.rain.fill" }
+  if text.contains("雨") { return "cloud.rain.fill" }
+  if text.contains("雪") { return "cloud.snow.fill" }
+  if text.contains("雾") || text.contains("霾") { return "cloud.fog.fill" }
+  if text.contains("阴") { return "cloud.fill" }
+  if text.contains("云") { return "cloud.sun.fill" }
+  if ["150", "151", "152", "153"].contains(icon) { return "moon.stars.fill" }
+  return "sun.max.fill"
 }
 
 private extension AppTab {

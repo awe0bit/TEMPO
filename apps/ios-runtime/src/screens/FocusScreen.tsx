@@ -13,8 +13,10 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
   perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
 }) {
   const [statistics, setStatistics] = useState(false);
+  const [timerSettings, setTimerSettings] = useState(false);
   useEffect(() => {
     if (command?.type === 'statistics') setStatistics(true);
+    if (command?.type === 'timerSettings') setTimerSettings(true);
     if (command?.type === 'resetTimer') void perform('pomodoro.reset');
     if (command?.type === 'stopTimer') void perform('pomodoro.stop');
     if (command) consumeCommand();
@@ -48,14 +50,17 @@ export function FocusScreen({ theme, pomodoro, remaining, command, consumeComman
         )}
       </View>
       <Sheet visible={statistics} onClose={() => setStatistics(false)} theme={theme} snapPoints={['78%', '94%']}>
-        <FocusStatistics theme={theme} state={state} perform={perform} />
+        <FocusStatistics theme={theme} state={state} />
+      </Sheet>
+      <Sheet visible={timerSettings} onClose={() => setTimerSettings(false)} theme={theme} snapPoints={['42%', '68%']}>
+        <TimerSettings theme={theme} state={state} perform={perform} />
       </Sheet>
     </Screen>
   );
 }
 function TimerDial({ theme, progress, children }: { theme: TempoTheme; progress: number; children: React.ReactNode }) { const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`; return <View style={[styles.timerDial, { borderColor: theme.separator }]}>{children}<View style={[styles.dialTrack, { backgroundColor: theme.surfaceMuted }]}><View style={[styles.dialFill, { width: progressWidth, backgroundColor: theme.accent }]} /></View></View>; }
 function TimerActionButton({ theme, label, symbol, primary = false, onPress }: { theme: TempoTheme; label: string; symbol: NativeSymbolName; primary?: boolean; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.actionButton, { backgroundColor: primary ? theme.accent : theme.surface, borderColor: primary ? theme.accent : theme.separator }, pressed && styles.buttonPressed]}><NativeSymbol name={symbol} color={primary ? '#FFFFFF' : theme.secondary} size={15} /><Text numberOfLines={1} style={[styles.actionLabel, { color: primary ? '#FFFFFF' : theme.text }]}>{label}</Text></Pressable>; }
-function FocusStatistics({ theme, state, perform }: { theme: TempoTheme; state: PomodoroState; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T> }) {
+function FocusStatistics({ theme, state }: { theme: TempoTheme; state: PomodoroState }) {
   const completedHistory = state.focusHistory.filter((item) => item.completed);
   const totalSeconds = completedHistory.reduce((sum, item) => sum + item.durationSeconds, 0);
   const goalProgress = Math.min(1, state.completedFocusSessions / Math.max(1, state.dailyFocusGoal));
@@ -77,13 +82,19 @@ function FocusStatistics({ theme, state, perform }: { theme: TempoTheme; state: 
     </View>
     <Text style={[styles.sectionTitle, { color: theme.secondary }]}>{t('focus.heatmap')}</Text>
     <WeeklyTrend theme={theme} history={completedHistory} />
-    <Text style={[styles.sectionTitle, { color: theme.secondary }]}>{t('focus.timerSettings')}</Text>
+  </ScrollView>;
+}
+function TimerSettings({ theme, state, perform }: { theme: TempoTheme; state: PomodoroState; perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T> }) {
+  return <View style={styles.timerSettingsBody}>
+    <Text style={[styles.statsTitle, { color: theme.text }]}>{t('focus.timerSettings')}</Text>
     <View style={[styles.settingsGroup, { backgroundColor: theme.surface }]}>
       <OptionRow theme={theme} label={t('focus.duration')} values={[25, 35, 45, 60]} selected={state.focusMinutes} accessibilityLabel={(value) => t('focus.minutes', { count: value })} onSelect={(focus) => perform('pomodoro.settings', { focus })} />
       <View style={[styles.settingDivider, { backgroundColor: theme.separator }]} />
       <OptionRow theme={theme} label={t('focus.todayGoal')} values={[2, 4, 6, 8]} selected={state.dailyFocusGoal} accessibilityLabel={(value) => t('focus.sessions', { count: value })} onSelect={(dailyFocusGoal) => perform('pomodoro.settings', { dailyFocusGoal })} />
+      <View style={[styles.settingDivider, { backgroundColor: theme.separator }]} />
+      <OptionRow theme={theme} label={t('settings.longBreakInterval')} values={[2, 3, 4, 5]} selected={state.longBreakEvery} accessibilityLabel={(value) => t('settings.times', { count: value })} onSelect={(longBreakEvery) => perform('pomodoro.settings', { longBreakEvery })} />
     </View>
-  </ScrollView>;
+  </View>;
 }
 function WeeklyTrend({ theme, history }: { theme: TempoTheme; history: PomodoroState['focusHistory'] }) {
   const days = useMemo(() => Array.from({ length: 7 }, (_, index) => { const date = addDays(new Date(), index - 6); const seconds = history.filter((item) => sameDate(new Date(item.startedAt), date)).reduce((sum, item) => sum + item.durationSeconds, 0); return { date, minutes: Math.round(seconds / 60) }; }), [history]);
@@ -112,6 +123,7 @@ const styles = StyleSheet.create({
   startText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   buttonPressed: { opacity: .76, transform: [{ scale: .94 }] },
   stats: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 50 },
+  timerSettingsBody: { flex: 1, paddingHorizontal: 18, paddingTop: 8 },
   statsTitle: { fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -.45, marginBottom: 16 },
   summaryCard: { borderRadius: 18, padding: 16 },
   summaryTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },

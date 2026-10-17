@@ -74,6 +74,10 @@
 "不关联任务" = "No Linked Task";
 "自定义时长" = "Custom Durations";
 "专注统计" = "Focus Statistics";
+"计时设置" = "Timer Settings";
+"天气" = "Weather";
+"正在获取天气" = "Loading Weather";
+"轻点刷新天气" = "Tap to refresh weather";
 "今日番茄" = "Sessions Today";
 "今日专注时长" = "Focus Time Today";
 "总番茄" = "Total Sessions";

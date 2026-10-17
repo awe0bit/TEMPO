@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated, Keyboard, LayoutAnimation, PanResponder, Pressable, StyleSheet, Text, TextInput, View,
+  Animated, Keyboard, LayoutAnimation, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeListView } from 'react-native-swipe-list-view';
@@ -18,9 +18,13 @@ type Props = {
   perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
 };
 
+type AIPlanSuggestion = { title: string; dayOffset: number };
+type AIPlan = { summary: string; suggestions: AIPlanSuggestion[] };
+
 export function TasksScreen({ route, theme, tasks, supportsSelectionFeedback, command, consumeCommand, perform }: Props) {
   const safeAreaInsets = useSafeAreaInsets();
   const [composerVisible, setComposerVisible] = useState(false);
+  const [aiVisible, setAIVisible] = useState(false);
   const [editing, setEditing] = useState<TempoTask>();
   const [draftTitle, setDraftTitle] = useState('');
   const [draftNotes, setDraftNotes] = useState('');
@@ -41,6 +45,7 @@ export function TasksScreen({ route, theme, tasks, supportsSelectionFeedback, co
     if (command?.type === 'showCompleted') setShowCompleted(true);
     if (command?.type === 'hideCompleted') setShowCompleted(false);
     if (command?.type === 'returnToday') setSelectedDate(new Date());
+    if (command?.type === 'aiAssistant') setAIVisible(true);
     if (command) consumeCommand();
   }, [command, consumeCommand]);
 
@@ -205,8 +210,104 @@ export function TasksScreen({ route, theme, tasks, supportsSelectionFeedback, co
           <PrimaryButton theme={theme} label={editing ? t('tasks.saveChanges') : t('tasks.add')} onPress={saveTask} disabled={!draftTitle.trim()} />
         </View>
       </Sheet>
+      <Sheet visible={aiVisible} onClose={() => setAIVisible(false)} theme={theme} snapPoints={['78%', '94%']}>
+        <AIPlanner
+          theme={theme}
+          selectedDate={selectedDate}
+          perform={perform}
+          onClose={() => setAIVisible(false)}
+        />
+      </Sheet>
     </Screen>
   );
+}
+
+function AIPlanner({ theme, selectedDate, perform, onClose }: {
+  theme: TempoTheme;
+  selectedDate: Date;
+  perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
+  onClose: () => void;
+}) {
+  const [goal, setGoal] = useState('');
+  const [plan, setPlan] = useState<AIPlan>();
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState('');
+
+  async function generate() {
+    if (!goal.trim() || loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      const next = await perform<AIPlan>('ai.plan', { goal: goal.trim() });
+      setPlan(next);
+      setSelected(new Set(next.suggestions.map((_, index) => index)));
+    } catch {
+      setError(t('tasks.aiUnavailable'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function apply() {
+    if (!plan || selected.size === 0 || applying) return;
+    setApplying(true);
+    try {
+      for (const [index, suggestion] of plan.suggestions.entries()) {
+        if (!selected.has(index)) continue;
+        const date = addDays(selectedDate, Math.max(0, Math.min(14, suggestion.dayOffset)));
+        await perform('task.add', { title: suggestion.title, notes: '', forToday: true, scheduledAt: date.toISOString() });
+      }
+      onClose();
+    } catch {
+      setError(t('tasks.aiApplyFailed'));
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  function toggle(index: number) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  }
+
+  return <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.aiBody}>
+    <Text style={[styles.sheetTitle, styles.aiTitle, { color: theme.text }]}>{t('tasks.aiTitle')}</Text>
+    <Text style={[styles.aiDescription, { color: theme.secondary }]}>{t('tasks.aiDescription')}</Text>
+    <TextInput
+      value={goal}
+      onChangeText={setGoal}
+      placeholder={t('tasks.aiPlaceholder')}
+      placeholderTextColor={theme.tertiary}
+      multiline
+      style={[styles.aiInput, { color: theme.text, backgroundColor: theme.surface }]}
+    />
+    <PrimaryButton theme={theme} label={t('tasks.aiGenerate')} onPress={generate} loading={loading} disabled={!goal.trim()} />
+    {error ? <Text accessibilityRole="alert" style={[styles.aiError, { color: theme.danger }]}>{error}</Text> : null}
+    {plan ? <>
+      <Text style={[styles.aiSummary, { color: theme.secondary }]}>{plan.summary}</Text>
+      <View style={[styles.aiSuggestions, { backgroundColor: theme.surface }]}>
+        {plan.suggestions.map((suggestion, index) => <Pressable
+          key={`${suggestion.title}-${suggestion.dayOffset}-${index}`}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: selected.has(index) }}
+          onPress={() => toggle(index)}
+          style={({ pressed }) => [styles.aiSuggestion, index > 0 && { borderTopColor: theme.separator, borderTopWidth: StyleSheet.hairlineWidth }, pressed && styles.aiSuggestionPressed]}
+        >
+          <NativeSymbol name={selected.has(index) ? 'checkmark.circle.fill' : 'circle'} color={selected.has(index) ? theme.accent : theme.tertiary} size={21} containerSize={28} />
+          <View style={styles.aiSuggestionText}>
+            <Text style={[styles.aiSuggestionTitle, { color: theme.text }]}>{suggestion.title}</Text>
+            <Text style={[styles.aiSuggestionDate, { color: theme.secondary }]}>{suggestion.dayOffset === 0 ? t('tasks.today') : t('tasks.aiDaysLater', { count: suggestion.dayOffset })}</Text>
+          </View>
+        </Pressable>)}
+      </View>
+      <PrimaryButton theme={theme} label={t('tasks.aiAddSelected', { count: selected.size })} onPress={apply} loading={applying} disabled={selected.size === 0} />
+    </> : null}
+  </ScrollView>;
 }
 
 function CalendarStrip({ theme, selected, onSelect, progress, expanded, onExpandedChange }: {
@@ -436,4 +537,16 @@ const styles = StyleSheet.create({
   titleInput: { marginHorizontal: 20, height: 60, borderRadius: 24, paddingHorizontal: 20, fontSize: 17 },
   notesInput: { marginHorizontal: 20, minHeight: 116, borderRadius: 24, padding: 20, fontSize: 16, lineHeight: 22, marginTop: 12 },
   destination: { fontSize: 13, lineHeight: 18, marginHorizontal: 22, marginTop: 12, marginBottom: 20 },
+  aiBody: { paddingTop: 18, paddingBottom: 44 },
+  aiTitle: { paddingHorizontal: 0, marginHorizontal: 24, marginBottom: 5 },
+  aiDescription: { fontSize: 14, lineHeight: 20, marginHorizontal: 24, marginBottom: 16 },
+  aiInput: { minHeight: 96, borderRadius: 18, marginHorizontal: 18, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, lineHeight: 22, textAlignVertical: 'top', marginBottom: 12 },
+  aiError: { fontSize: 13, lineHeight: 18, marginHorizontal: 24, marginTop: 10 },
+  aiSummary: { fontSize: 14, lineHeight: 20, marginHorizontal: 24, marginTop: 20, marginBottom: 9 },
+  aiSuggestions: { borderRadius: 18, overflow: 'hidden', marginHorizontal: 18, marginBottom: 14 },
+  aiSuggestion: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 9 },
+  aiSuggestionPressed: { opacity: .62 },
+  aiSuggestionText: { flex: 1, marginLeft: 8 },
+  aiSuggestionTitle: { fontSize: 16, lineHeight: 21, fontWeight: '500' },
+  aiSuggestionDate: { fontSize: 12.5, lineHeight: 17, marginTop: 2 },
 });
