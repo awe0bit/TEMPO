@@ -13,11 +13,12 @@ import type { TempoCommand, TempoTask } from '../types';
 
 type Props = {
   route: 'inbox' | 'today'; theme: TempoTheme; tasks: TempoTask[];
+  supportsSelectionFeedback: boolean;
   command?: TempoCommand; consumeCommand: () => void;
   perform: <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
 };
 
-export function TasksScreen({ route, theme, tasks, command, consumeCommand, perform }: Props) {
+export function TasksScreen({ route, theme, tasks, supportsSelectionFeedback, command, consumeCommand, perform }: Props) {
   const safeAreaInsets = useSafeAreaInsets();
   const [composerVisible, setComposerVisible] = useState(false);
   const [editing, setEditing] = useState<TempoTask>();
@@ -165,7 +166,7 @@ export function TasksScreen({ route, theme, tasks, command, consumeCommand, perf
             closeOnScroll
             useNativeDriver
             onRightActionStatusChange={({ isActivated }) => {
-              if (isActivated) void perform('feedback.selection').catch(() => undefined);
+              if (isActivated && supportsSelectionFeedback) void perform('feedback.selection').catch(() => undefined);
             }}
             onRightAction={(rowKey) => {
               const task = shownByID.get(rowKey);

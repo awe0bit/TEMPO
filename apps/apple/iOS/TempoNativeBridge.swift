@@ -64,6 +64,7 @@ final class TempoNativeRegistry {
       "locale": Locale.current.identifier,
       "colorScheme": scheme,
       "revision": revision,
+      "capabilities": ["feedback.selection"],
       "preferences": [
         "appearance": appearance,
         "haptics": defaults.object(forKey: TempoPreferenceKey.haptics) as? Bool ?? true,

@@ -71,6 +71,7 @@ export type TempoSnapshot = {
   locale: string;
   colorScheme: 'light' | 'dark';
   revision: number;
+  capabilities?: string[];
   tasks: TempoTask[];
   pomodoro?: PomodoroState;
   displayedRemainingSeconds: number;
