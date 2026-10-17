@@ -259,19 +259,18 @@ function DateCell({ date, selected, inCurrentMonth, theme, onPress }: { date: Da
 
 function TaskRow({ task, theme, first, last, onOpen, onToggle, swipeAnimatedValue }: { task: TempoTask; theme: TempoTheme; first: boolean; last: boolean; onOpen: () => void; onToggle: () => void; swipeAnimatedValue?: Animated.Value }) {
   const priorityColor = task.priority === 'high' ? theme.accent : theme.secondary;
-  const contentOffset = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, 0], outputRange: [96, 58, 0], extrapolate: 'clamp' }) ?? 0;
+  const contentOpacity = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, 0], outputRange: [.9, .96, 1], extrapolate: 'clamp' }) ?? 1;
+  const contentScale = swipeAnimatedValue?.interpolate({ inputRange: [-132, -76, 0], outputRange: [.985, .993, 1], extrapolate: 'clamp' }) ?? 1;
   return (
-    <Animated.View style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface }]}>
-      <Animated.View style={[styles.taskRowContent, { transform: [{ translateX: contentOffset }] }]}>
-        <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
-        <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
-          <View style={styles.taskText}>
-            <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
-            {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
-          </View>
-          {task.startAt ? <Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text> : null}
-        </Pressable>
-      </Animated.View>
+    <Animated.View style={[styles.taskRow, first && styles.groupTop, last && styles.groupBottom, { backgroundColor: theme.surface, opacity: contentOpacity, transform: [{ scale: contentScale }] }]}>
+      <Pressable onPress={onToggle} hitSlop={8} style={[styles.checkbox, { borderColor: task.status === 'completed' ? theme.success : theme.tertiary, backgroundColor: task.status === 'completed' ? theme.success : 'transparent' }]}>{task.status === 'completed' ? <Text style={styles.check}>✓</Text> : null}</Pressable>
+      <Pressable onPress={onOpen} style={({ pressed }) => [styles.taskMain, pressed && { opacity: .58 }]}>
+        <View style={styles.taskText}>
+          <View style={styles.titleLine}>{task.priority ? <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} /> : null}<Text numberOfLines={1} style={[styles.taskTitle, { color: task.status === 'completed' ? theme.secondary : theme.text, textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text></View>
+          {task.notes ? <Text numberOfLines={1} style={[styles.taskNotes, { color: theme.secondary }]}>{task.notes}</Text> : null}
+        </View>
+        {task.startAt ? <Text style={[styles.taskDate, { color: theme.accent }]}>{sameDay(task.startAt, new Date()) ? t('tasks.today') : shortDate(task.startAt)}</Text> : null}
+      </Pressable>
       {!last ? <View style={[styles.rowDivider, { backgroundColor: theme.separator }]} /> : null}
     </Animated.View>
   );
@@ -411,8 +410,7 @@ const styles = StyleSheet.create({
   deletePressable: { flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   deletePressed: { opacity: .64, transform: [{ scale: .95 }] },
   deleteLabel: { fontSize: 11, lineHeight: 15, fontWeight: '600', marginTop: 1 },
-  taskRow: { minHeight: 62, overflow: 'hidden' },
-  taskRowContent: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 },
+  taskRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingLeft: 15 },
   checkbox: { width: 20, height: 20, borderWidth: 1.5, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   check: { color: '#fff', fontWeight: '800' },
   taskMain: { minHeight: 62, flex: 1, flexDirection: 'row', alignItems: 'center', paddingRight: 15, borderRadius: 12 },
